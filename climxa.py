@@ -1,5 +1,5 @@
 # %% 
-  
+ 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
@@ -8,9 +8,8 @@ import pandas as pd
 import netCDF4
 import xarray as xr
 
-import xarray.plot as xplt 
+import xarray.plot as xplt
 #import sunpy.timeseries as ts 
-# 
 
 ########## for cycle ##############
 from matplotlib import dates as d
@@ -110,6 +109,11 @@ def read_ERA5_sg_level_data(site, variable, single_lev_var, ERA5_path=None):
             ds[var] = ds[var] - 273.15
             ds[var].attrs['units'] = 'deg C' #r'^{\circ}'
             ds[var].attrs['long_name'] = 'Temperature'
+
+    elif variable == 'surface_pressure':
+        # convert Pa to hPa
+        for var in single_lev_var:
+            ds[var] = ds[var]/100
         
     return ds
 
@@ -492,11 +496,15 @@ def Cn2_func(T, P, u_i0, u_i1, v_i0, v_i1, T1, P1, i, df_z_0, df_z_m1, df_z_p1):
     g = 9.80665 #m/s^2, from Era5 documentation 
     # k_var = 6 # from Osborn 2018
     k_var = 1 # calibrate later
-    if int(i) == 0:
-        delta_z = abs(df_z_0 - df_z_p1) #df_seeing_era5_sort['z/g'][i] - df_seeing_era5_sort['z/g'][int(i+1)]
-    else:
-        delta_z =  abs(0.5 * (df_z_m1 - df_z_p1)) #0.5 * (df_seeing_era5_sort['z/g'][i-1] - df_seeing_era5_sort['z/g'][int(i+1)])
-  
+    # if int(i) == 0:
+    #     delta_z = abs(df_z_0 - df_z_p1) #df_seeing_era5_sort['z/g'][i] - df_seeing_era5_sort['z/g'][int(i+1)]
+    # # elif df_z_p1 == None: # if we have reached the end of the pressure level list
+    # #     delta_z = abs(df_z_m1 - df_z_0)
+    # else:
+    #     delta_z =  abs(0.5 * (df_z_m1 - df_z_p1)) #0.5 * (df_seeing_era5_sort['z/g'][i-1] - df_seeing_era5_sort['z/g'][int(i+1)])
+    
+    delta_z = abs(df_z_0 - df_z_p1)
+
     Cn2_var = (80*10**(-6) * P / (T * theta(T, P)))**2 * k_var * (2 * E(u_i0, u_i1, v_i0, v_i1, delta_z) / (g/theta(T, P) * abs(theta(T1, P1)- theta(T, P))/ delta_z))**(2/3) * ((theta(T1, P1)- theta(T, P))/ delta_z)**2
     return(Cn2_var * delta_z)
 
@@ -504,11 +512,15 @@ def Cn2_profile_func(T, P, u_i0, u_i1, v_i0, v_i1, T1, P1, i, df_z_0, df_z_m1, d
     g = 9.80665 #m/s^2, from Era5 documentation 
     # k_var = 6 # from Osborn 2018  
     k_var = 1 # calibrate later!
-    if int(i) == 0:
-        delta_z = abs(df_z_0 - df_z_p1)
-    else:
-        delta_z =  abs(0.5 * (df_z_m1 - df_z_p1)) #0.5 * (df_seeing_era5_sort['z/g'][i-1] - df_seeing_era5_sort['z/g'][int(i+1)])
+    # if int(i) == 0:
+    #     delta_z = abs(df_z_0 - df_z_p1)
+    # # elif df_z_p1 == None: # if we have reached the end of the pressure level list
+    # #     delta_z = abs(df_z_m1 - df_z_0)
+    # else:
+    #     delta_z =  abs(0.5 * (df_z_m1 - df_z_p1)) #0.5 * (df_seeing_era5_sort['z/g'][i-1] - df_seeing_era5_sort['z/g'][int(i+1)])
   
+    delta_z = abs(df_z_0 - df_z_p1)
+    
     Cn2_var_profile = (80*10**(-6) * P / (T * theta(T, P)))**2 * k_var * (2 * E(u_i0, u_i1, v_i0, v_i1, delta_z) / (g/theta(T, P) * abs(theta(T1, P1)- theta(T, P))/ delta_z))**(2/3) * ((theta(T1, P1)- theta(T, P))/ delta_z)**2
     return(Cn2_var_profile)
 
@@ -535,21 +547,42 @@ def ERA5_seeing_calc(ds_full, mean_insitu, pr_levels_list):
     # for seeing value, integrate Cn2 over all pressure levels
     #pr_levels_list = pr_levels[:-2]
 
-    for i in range(0, len(pr_levels_list)):
-        T = ds_full.t[i]
-        P = ds_full.level[i]
-        u_i0 = ds_full.u[i]
-        u_i1 = ds_full.u[int(i+1)]
-        v_i0 = ds_full.v[i]    
-        v_i1 = ds_full.v[int(i+1)]
-        T1 = ds_full.t[int(i+1)] 
-        P1 = ds_full.level[int(i+1)] 
-        df_z_0 = ds_full.z[i]/g
+    for i in range(0, len(pr_levels_list)-1): # ADDED -1, otherwise we go out of range
+        # T = ds_full.t[i]
+        # P = ds_full.level[i]
+        # u_i0 = ds_full.u[i]
+        # u_i1 = ds_full.u[int(i+1)]
+        # v_i0 = ds_full.v[i]    
+        # v_i1 = ds_full.v[int(i+1)]
+        # T1 = ds_full.t[int(i+1)] 
+        # P1 = ds_full.level[int(i+1)] 
+        # df_z_0 = ds_full.z[i]/g
+        # if i == 0:
+        #     df_z_m1 = 0
+        # else:
+        #     df_z_m1 = ds_full.z[i-1]/g
+        # df_z_p1 = ds_full.z[i+1]/g
+
+
+        # above does not work if we want to integrate from 850 to 50
+        # either make sure you apply ds_full.sortby('level', ascending=False)
+        # or rewrite as in PRIMAVERA_calc_seeing with .sel(level=pr_levels_list[i])
+        # which is much much safer!!!!
+
+        T = ds_full.t.sel(level=pr_levels_list[i])
+        P = ds_full.level.sel(level=pr_levels_list[i])
+        u_i0 = ds_full.u.sel(level=pr_levels_list[i])
+        u_i1 = ds_full.u.sel(level=pr_levels_list[i+1])
+        v_i0 = ds_full.v.sel(level=pr_levels_list[i])   
+        v_i1 = ds_full.v.sel(level=pr_levels_list[i+1])  
+        T1 = ds_full.t.sel(level=pr_levels_list[i+1])   
+        P1 = ds_full.level.sel(level=pr_levels_list[i+1])   
+        df_z_0 = ds_full.z.sel(level=pr_levels_list[i])/g # divide by g to get meters
         if i == 0:
             df_z_m1 = 0
         else:
-            df_z_m1 = ds_full.z[i-1]/g
-        df_z_p1 = ds_full.z[i+1]/g
+            df_z_m1 = ds_full.z.sel(level=pr_levels_list[i-1])/g # not needed actually anymore
+        df_z_p1 = ds_full.z.sel(level=pr_levels_list[i+1])/g
 
         # integrate (sum)
         J = J + Cn2_func(T, P, u_i0, u_i1, v_i0, v_i1, T1, P1, i, df_z_0, df_z_m1, df_z_p1)
@@ -590,20 +623,26 @@ def ERA5_seeing_wind(ds_full, mean_insitu, PRIMAVERA = False, U_clim_var=None, V
         i = idx
         # check index
         if ds_full[U_clim_var][:,i].level != 200:
-            raise Exception('index of 5 does not correspond to 200hPa level. check data.')
+            raise Exception(f'index of {i} does not correspond to 200hPa level. check data.')
 
         # calculate J
         J = (ds_full[U_clim_var][:,i]**2 + ds_full[V_clim_var][:,i]**2)
 
     else:
-        i = 5 # index of 5 should be equal to 200hPa for ERA5 data
+        # i = 5 # index of 5 should be equal to 200hPa for ERA5 data
 
-        # check if index corresponds really to 200hPa level
-        if ds_full.u[i].level != 200:
-            raise Exception('index of 5 does not correspond to 200hPa level. check data.')
+        # ds_full.level.index(200)
+
+        # # check if index corresponds really to 200hPa level
+        # if ds_full.u[i].level != 200:
+        #     raise Exception('index of 5 does not correspond to 200hPa level. check data.')
         
         # calculate J
-        J = (ds_full.u[i]**2 + ds_full.v[i]**2)
+        # J = (ds_full.u[i]**2 + ds_full.v[i]**2) # OLD
+        # better to select explicitely the level of 200hPa!!!
+        J = (ds_full.u.sel(level = 200)**2 + ds_full.v.sel(level = 200)**2)
+        
+
     # maybe it makes sense to load J into memory here. Otherwise it may be that it has to be loaded twice (once for the mean and once for writing to netcdf)!
 
     # calibration
@@ -656,17 +695,21 @@ def get_PRIMAVERA_surface_pressure_level(model_name_clim_key, site_name_folder, 
 # pr_levels_list = pr_levels[:-2]
 def PRIMAVERA_calc_seeing(ds_full, mean_insitu, lon, lat, T_clim_var, U_clim_var, V_clim_var, Z_clim_var, pr_levels_list, site, clim_key, forcing, closest_value):
     J = 0
+    fann = False
 
     for i in range(0, len(pr_levels_list)-1):
         # print(pr_levels_list[i])
         T = ds_full[T_clim_var].sel(level=pr_levels_list[i])
-        P = ds_full.level[i]
+        # P = ds_full.level[i] # wROONG! you adapted everything else but the pressure level..
+        P = ds_full.level.sel(level=pr_levels_list[i]) #[i]
+    
         u_i0 = ds_full[U_clim_var].sel(level=pr_levels_list[i])
         u_i1 = ds_full[U_clim_var].sel(level=pr_levels_list[i+1])
         v_i0 = ds_full[V_clim_var].sel(level=pr_levels_list[i]) 
         v_i1 = ds_full[V_clim_var].sel(level=pr_levels_list[i+1])
         T1 = ds_full[T_clim_var].sel(level=pr_levels_list[i+1])
-        P1 = ds_full.level[int(i+1)] 
+        # P1 = ds_full.level[int(i+1)] 
+        P1 = ds_full.level.sel(level=pr_levels_list[i+1]) #[i]
         df_z_0 = ds_full[Z_clim_var].sel(level=pr_levels_list[i]) # do not divide by g, it is already in m (model data)
         if i == 0:
             df_z_m1 = 0
@@ -680,7 +723,9 @@ def PRIMAVERA_calc_seeing(ds_full, mean_insitu, lon, lat, T_clim_var, U_clim_var
         ds_check = J_add.where(xr.ufuncs.isnan(J_add) != True, drop = True)
         # print(ds_check['time'].size)
         if ds_check['time'].size == 0:
-            print('nan array for {}'.format(i))
+            print('nan array for i = {}'.format(i))
+            if i == 0:
+                fann = True
         else:
             J = J + J_add
         
@@ -691,6 +736,9 @@ def PRIMAVERA_calc_seeing(ds_full, mean_insitu, lon, lat, T_clim_var, U_clim_var
 
             # concatenate DataArrays along new dimension 'level'
             if i == 0:
+                ds_Cn2_profile = ds_Cn2
+            # 2021-02-22: added because we integrate now from surface level, which might be nan
+            elif fann == True:
                 ds_Cn2_profile = ds_Cn2
             else:
                 ds_Cn2_profile = xr.concat([ds_Cn2_profile, ds_Cn2], 'level')
@@ -717,11 +765,19 @@ def PRIMAVERA_calc_seeing(ds_full, mean_insitu, lon, lat, T_clim_var, U_clim_var
         # drop 'level' now, otherwise we have 'level=200'
         # ds_seeing = ds_seeing.reset_coords(names='level', drop=True)
         # --> do not drop anything here, keep 200hPa (makes it easier to read in the data!!)
-        ds_seeing["seeing"] = ds_seeing["seeing"].assign_coords(level=closest_value, longitude=lon, latitude=lat)
+        ds_seeing["seeing"] = ds_seeing["seeing"].assign_coords(level=5, longitude=lon, latitude=lat)
         # add dimension 'level'
         ds_seeing["seeing"] = ds_seeing["seeing"].expand_dims(dim=['level', 'longitude', 'latitude'])
         # now, the level can be selected with e.g. ds.sel(level=775)
         # add coords lon and lat
+        # THIS IS CONFUSING! even if I specify level=5, it stores it as level = 850 for HadGEM only...
+        # But if I go step by step in this function here, I do not see anything off
+        # therefore, print ds_seeing now
+        # print(ds_seeing['seeing'].level)
+        # I can only suspect ds_seeing["seeing"] poses the problem, against ds_seeing = ...
+        # check therefore
+        # print(ds_seeing.level)
+        # I think I just forgot to reload climxa!
 
         # define path
         path = './sites/'+ site + '/Data/HighResMIP/seeing/Amon/' + clim_key + '/' + forcing +'.nc' # where to save the files
@@ -3210,7 +3266,7 @@ def xr_plot_cycles_timeseries(d_obs, site, variable, lon, lat, d_model = None,
                                 colOBS = 'r', markerobs = 'o', markerLegend = 'off',stylerms ='-',colRMS='grey',
                                 titleOBS = 'Observation', titleRMS = 'off', titleRMSDangle=20, colCOR='dimgrey', 
                                 MarkerDictCH=marD, alpha=0.7, markerSize= 9, my_axis=ax4, legendCH=False) 
-                    # LEGEND no longer needed at all! (if it works, it can be ingested into if's below)
+                    # LEGEND no longer needed at all!
 
                     # edit: no legend needed because we already have the color legend under the timeseries!
                     # ##### add legend here for publication
@@ -5780,6 +5836,13 @@ def main_plotting_routine(site, variable, time_slice_var, d_obs, lon, lat, path,
 
                         print('seeing loaded')
 
+        elif variable == 'seeing_pf': # polyfit tests
+            if 'ERA5_var' in d_obs.keys():
+                    path_seeing = './sites/'+ site + '/Data/Era_5/seeing_pf/ds_ERA5_seeing_monthly_polyfit_integral.nc'
+                    ds_seeing = xr.open_dataset(path_seeing)
+
+                    load_ds.append(ds_seeing.load())
+
 
         else: # no SH_integral to load --> read in ERA5 data normally
             # get ERA5 data    
@@ -5941,8 +6004,10 @@ def main_plotting_routine(site, variable, time_slice_var, d_obs, lon, lat, path,
                     # load in 'q_integrated' dataset
 
                     path_q_integrated_model = '/home/haslebacher/chaldene/Astroclimate_Project/sites/'+ site + '/Data/HighResMIP/q_integrated/Amon/' + clim_key + '/ds_' + clim_key + '_q_integrated_monthly_resampled_nearest_' + site + '_' + str(Plev) + 'hPa.nc' # where files are stored
-                    # # until surface pressure:
-                    # path_q_integrated_model = '/home/haslebacher/chaldene/Astroclimate_Project//sites/'+ site + '/Data/HighResMIP/q_integrated/Amon/' + clim_key + '/ds_' + clim_key + '_q_integrated_monthly_resampled_nearest_' + site + '_' + str(Plev) + 'hPa_surface_pressure.nc' # where to save the files
+                    
+                    # until surface pressure:
+                    # for check
+                    # path_q_integrated_model = '/home/haslebacher/chaldene/Astroclimate_Project//sites/'+ site + '/Data/HighResMIP/q_integrated/Amon/' + clim_key + '/ds_' + clim_key + '_q_integrated_monthly_resampled_nearest_' + site + '_' + str(Plev) + 'hPa_surface_pressure.nc' # for check
 
                     ds_q_integrated_model = xr.open_dataset(path_q_integrated_model) 
                     merge_model_plev.append(ds_q_integrated_model)
@@ -5985,6 +6050,7 @@ def main_plotting_routine(site, variable, time_slice_var, d_obs, lon, lat, path,
 
 
     # select time slice of model data for diurnal/seasonal cycle
+    # select lon/lat
     if d_model != None:
         for clim_key in d_model.keys(): # go through all climate models
             if 'ds_sel' not in d_model[clim_key].keys(): # check if ds_sel is already there
