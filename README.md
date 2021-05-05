@@ -7,7 +7,7 @@ All functions are defined in the file 'climxa.py'. The files 'xarray_all_sites_D
 `this will be formatted as a line of code`
 
 write about:
-- requirements.txt (not all packages used)
+- requirements.txt (not all packages used) (pip install -r requirements.txt in venv)
   - plus: changed code in skill_metrics
   
 - workflow: 
