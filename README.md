@@ -24,3 +24,19 @@ write about:
 
 I would need to change all  PATHS!!
 also, change the header of the files. sometimes I copied a file and did not change the header!
+
+
+
+add: from publication ...
+
+add: explain json files
+add: bayesian plots
+add: csv tables
+add: seeing calibration factors k and A
+
+about pickle files:
+import pickle
+with open('mypklfile.pkl', 'rb') as myfile:
+    dload = pickle.load(myfile)
+    
+
