@@ -1,10 +1,11 @@
 # Astroclimate-future-project
 Impact of climate change on astronomical observations, assessed with high-resolution global climate models from HighResMIP. 
 
+In this repository, the code that we used for the publication
+C. Haslebacher, M.-E. Demory, B.-O. Demory, M. Sarazin, and P. L. Vidale, "Impact of climate change on site characteristics of eight major astronomical observatories using high-resolution global climate projections until 2050" (in revision)
+
 ## Description of code structure
 All functions are defined in the file 'climxa.py'. The files 'xarray_all_sites_DSCTi_variable.py' generate a plot with subplots of all sites defined in 'sites_lon_lat_dataframe.py' (here: the eight sites evaluated in the study). The subplots contain a timeseries with yearly averages of in situ data (if available), ERA5 data (if I remember correctly, this must be available, if in situ data is not given as an input) and PRIMAVERA data (if model = True). 
-
-`this will be formatted as a line of code`
 
 write about:
 - requirements.txt (not all packages used) (pip install -r requirements.txt in venv)
@@ -22,12 +23,8 @@ write about:
     - run ???? (import pickle files) and in R, do trend analysis with adapted 'R_Bayesian_Trends.R' for PRIMAVERA and 'R_Bayesian_Trends_ERA5.R' for ERA5
 
 
-I would need to change all  PATHS!!
-also, change the header of the files. sometimes I copied a file and did not change the header!
 
 
-
-add: from publication ...
 
 add: explain json files
 add: bayesian plots
