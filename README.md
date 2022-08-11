@@ -11,8 +11,8 @@ C. Haslebacher, M.-E. Demory, B.-O. Demory, M. Sarazin, and P. L. Vidale, "Impac
 All functions are defined in the file 'climxa.py'. The files 'xarray_all_sites_DSCTi_variable.py' generate a plot with subplots of all sites defined in 'sites_lon_lat_dataframe.py' (here: the eight sites evaluated in the study). The subplots contain a timeseries with yearly averages of in situ data (if available), ERA5 data (this must be available, if in situ data is not given as an input) and PRIMAVERA data (if model = True). 
 
 other files:
-- requirements.txt (not all packages used) (pip install -r requirements.txt in venv)
-  - I've also used and changed code in the skill_metrics package by Peter Rocheford
+- requirements.txt (not all packages used) (```pip install -r requirements.txt``` in venv)
+  - I've also used and changed code in the skill_metrics package by Peter Rocheford (on GitHub)
   
 - workflow: 
   - Note: in all code files, the paths must be changed.
