@@ -6,7 +6,7 @@ In this repository, the code and data that we used for the following publication
 C. Haslebacher, M.-E. Demory, B.-O. Demory, M. Sarazin, and P. L. Vidale, "Impact of climate change on site characteristics of eight major astronomical observatories using high-resolution global climate projections until 2050" (accepted by A&A, in press)
 
 The 'code' branch can be cloned by using
-```git clone -b code --single-branch https://github.com/CarolineHaslebacher/Astroclimate-future-project.git```
+```git clone -b code --single-branch https://github.com/CarolineHaslebacher/Astroclimate-future-project.git```.
 The 'data' branch can be cloned with
 ```git clone -b data --single-branch https://github.com/CarolineHaslebacher/Astroclimate-future-project.git```
 
