@@ -1,6 +1,6 @@
 # 2020-08-29
-# this function integrates the specific humidity 
-# from the model data sets 
+# this function integrates the specific humidity
+# from the model data sets
 # and saves them into a separate netcdf file
 
 #%%
@@ -9,7 +9,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
- 
+
 import netCDF4
 import xarray as xr
 
@@ -70,6 +70,9 @@ d_site_lonlat_data = pickle.load( open( "/home/haslebacher/chaldene/Astroclimate
 
 #%%
 
+# decide if we should save it:
+save = True
+
 # climate models: SH integral
 
 importlib.reload(climxa)
@@ -77,8 +80,8 @@ importlib.reload(climxa)
 
 pr_levels_model = [1, 5, 10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000]
 # CNRM:     100000, 92500, 85000, 70000, 60000, 50000, 40000, 30000, 25000, 20000, 15000, 10000, 7000, 5000, 3000, 2000, 1000, 500, 100
-# CMCC:     100000, 92500, 85000, 70000, 60000, 50000, 40000, 30000, 25000, 20000, 15000, 10000, 7000, 5000, 3000, 2000, 1000, 500, 100 
-# EC-Earth: 100000, 92500, 85000, 70000, 60000, 50000, 40000, 30000, 25000, 20000, 15000, 10000, 7000, 5000, 3000, 2000, 1000, 500, 100 
+# CMCC:     100000, 92500, 85000, 70000, 60000, 50000, 40000, 30000, 25000, 20000, 15000, 10000, 7000, 5000, 3000, 2000, 1000, 500, 100
+# EC-Earth: 100000, 92500, 85000, 70000, 60000, 50000, 40000, 30000, 25000, 20000, 15000, 10000, 7000, 5000, 3000, 2000, 1000, 500, 100
 # ECMWF:    100000, 92500, 85000, 70000, 60000, 50000, 40000, 30000, 25000, 20000, 15000, 10000, 7000, 5000, 3000, 2000, 1000, 500, 100
 # HadGEM:   100000, 92500, 85000, 70000, 60000, 50000, 40000, 30000, 25000, 20000, 15000, 10000, 7000, 5000, 3000, 2000, 1000, 500, 100
 # MPI:      100000, 92500, 85000, 70000, 60000, 50000, 40000, 30000, 25000, 20000, 15000, 10000, 7000, 5000, 3000, 2000, 1000, 500, 100
@@ -111,7 +114,7 @@ for idx in range(0, 8):
 
     surface_pressure_observation = d_site_lonlat_data['pressure [hPa]'][idx]
     print(surface_pressure_observation)
-    # check available pressure for climate models 
+    # check available pressure for climate models
     absolute_difference_function = lambda list_value : abs(list_value - given_value)
 
     given_value = surface_pressure_observation
@@ -124,13 +127,13 @@ for idx in range(0, 8):
 
     for clim_key in d_model.keys():
 
-        # use function which loads in all specific humidity datasets 
+        # use function which loads in all specific humidity datasets
         d_model[clim_key]['ds_hus'] = climxa.get_PRIMAVERA(d_model, clim_key, site, pressure_level=True)
 
         # select lon/lat
         d_model[clim_key]['ds_sel'] = climxa.xr_sel(d_model[clim_key], 'ds_hus', lon, lat)
 
-        # find maximal index 
+        # find maximal index
         pr_max_idx = pr_levels_model.index(SH_integral_pressure)
 
         # initialize dataset
@@ -140,6 +143,7 @@ for idx in range(0, 8):
         for forc_idx, forcing in enumerate(d_model[clim_key]['folders']):
             summe = climxa.Euler_centred_PWV(d_model[clim_key]['ds_sel'], pr_max_idx, 'hus ' + forcing)
 
+            # print(summe)
             # write integral to dataset
             ds_q_integrated["q_integrated " + forcing] = summe
 
@@ -148,21 +152,23 @@ for idx in range(0, 8):
             ds_q_integrated["q_integrated " + forcing].attrs['units'] = 'mmH2O' # = 1kg/m^2
 
             # add coordinate 'level'
-            if forc_idx == 0:
-                ds_q_integrated = ds_q_integrated.drop('level') # drop level, otherwise it is not overwritten properly sometimes
-            
+            if forc_idx == 0 and 'level' in ds_q_integrated.coords:
+                # drop level, otherwise it is not overwritten properly sometimes
+                ds_q_integrated = ds_q_integrated.drop('level')
+
             ds_q_integrated["q_integrated " + forcing] = ds_q_integrated["q_integrated " + forcing].assign_coords(level=SH_integral_pressure)
             # add dimension 'level'
             ds_q_integrated["q_integrated " + forcing] = ds_q_integrated["q_integrated " + forcing].expand_dims(dim='level')
             # now, the level can be selected with e.g. ds.sel(level=775)
 
-        # define path
-        path = './sites/'+ site + '/Data/HighResMIP/q_integrated/Amon/' + clim_key + '/ds_' + clim_key + '_q_integrated_monthly_resampled_nearest_' + site + '_' + str(SH_integral_pressure) + 'hPa.nc' # where to save the files
+        if save:
+            # define path
+            path = './sites/'+ site + '/Data/HighResMIP/q_integrated/Amon/' + clim_key + '/ds_' + clim_key + '_q_integrated_monthly_resampled_nearest_' + site + '_' + str(SH_integral_pressure) + 'hPa.nc' # where to save the files
 
-        # make directory if not available
-        os.makedirs(os.path.dirname(path), exist_ok=True) 
+            # make directory if not available
+            os.makedirs(os.path.dirname(path), exist_ok=True)
 
-        # save array to netcdf file, store it 
-        ds_q_integrated.to_netcdf(path)
+            # save array to netcdf file, store it
+            ds_q_integrated.to_netcdf(path)
 
 #%%

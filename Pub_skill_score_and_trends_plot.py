@@ -7,7 +7,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
- 
+
 import netCDF4
 import xarray as xr
 
@@ -27,7 +27,7 @@ from matplotlib.colors import to_hex
 import csv
 
 import seaborn as sns
-sns.set()
+# sns.set()
 from matplotlib import cycler
 from matplotlib.colors import to_hex
 
@@ -68,7 +68,7 @@ d_site_lonlat_data = pickle.load(open( "/home/haslebacher/chaldene/Astroclimate_
 #%%
 
 
-#%% 
+#%%
 def Prlevel_attributes_T_RH_SH():
     # generate attribute list automatically
     attrib = []
@@ -82,7 +82,7 @@ def Prlevel_attributes_T_RH_SH():
         # [0] because there is only one pressure level (or should be!)
         attrib.append('_' + str(ls_pr_levels_clim_model[0]))
         attrib_ERA5.append('_' + str(ls_pr_levels_ERA5[0]))
-    
+
     return attrib_ERA5, attrib
 
 # attrib_ERA5, attrib = Prlevel_attributes_T_RH_SH()
@@ -152,7 +152,7 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
     ls_site_names = []
     line_list = []
 
-    ls_hex = [to_hex(plt.cm.terrain(i / 8)) for i in range(8)] 
+    ls_hex = [to_hex(plt.cm.terrain(i / 8)) for i in range(8)]
 
     # fig, ax = plt.subplots(figsize=(8,4))
     # add subplot to figure
@@ -164,7 +164,7 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
 
 
     for idx in range(0, 8):
-        
+
         site_name_folder = d_site_lonlat_data['site_name_folder'][idx]
         # "Mauna_Kea", "Cerro_Paranal", "La_Silla", "Cerro_Tololo", "La_Palma", "Siding_Spring", "Sutherland", "SPM"
         # change site name if needed
@@ -172,7 +172,7 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
             site_name_folder = 'Mauna_Kea'
         if idx == 1:
             site_name_folder = 'Cerro_Paranal'
-        
+
         ls_site_names.append(site_name_folder.replace('_', ' '))
 
 
@@ -192,7 +192,7 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
                 # read PRIMAVERA csv
                 df = pd.read_csv(base_path + site_name_folder + '_' + forcing + attrib[idx] + variable + '_' + '_PRIMAVERA_Projections_Bayesian_model_map2stan.csv')
 
-            # rename 
+            # rename
             df = df.rename(columns={'Unnamed: 0': 'parameter'})
 
             # plot b (the gradient of the slope if the seasonal variation was excluded)
@@ -201,21 +201,21 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
             # df['mean'][1] is the gradient b
             # multiply with 10 to get it in unit/decade
             if forcing == 'future' or forcing == 'SSTfuture':
-                
+
                 color = '#009e73'
 
                 if forcing == 'future':
                     x_idx = idx + 0.8
                 else:
                     x_idx = idx + 0.95
-                
+
             else:
                 if forcing == 'ERA5':
                     color = 'k' # ERA5 is the new ground truth and should therefore be black # '#0072b2' # '#56b4e9'
-                    x_idx = idx + 0.1               
+                    x_idx = idx + 0.1
 
                 else: # hist or present
-                    color = '#e69f00'#  
+                    color = '#e69f00'#
                     if forcing == 'hist':
                         x_idx = idx + 0.3
                     else:
@@ -230,8 +230,8 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
 
             # not for ERA5
             if forcing != 'ERA5': # only for PRIMAVERA trends
-                if forcing == 'present' or forcing == 'hist': # 
-                    # get markersize and alpha-value depending on difference 
+                if forcing == 'present' or forcing == 'hist': #
+                    # get markersize and alpha-value depending on difference
                     if df_ensemble_match_diff['Best Simulation'][idx] == forcing:
                         # if the best simulation matches the current forcing, apply no special markersize and alpha
                         # alpha = 0.9
@@ -247,7 +247,7 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
                         # smaller markersize for second best match, alpha corresponding to difference
                         # e.g. if best match is 'present', then we have 'hist' here
                         markersize = 9 - markersize_scale*df_ensemble_match_diff['Difference to second best simulation'][idx]
-                    
+
                         # alpha = 1 - 2*df_ensemble_match_diff['Difference to second best simulation'][idx]
 
                     # elif df_ensemble_match_diff['Best Simulation'][idx] != forcing:
@@ -267,18 +267,18 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
                         else: # forcing == 'SSTfuture'
                             # smaller
                             markersize = 9  - markersize_scale*df_ensemble_match_diff['Difference to second best simulation'][idx]
-                    
+
                             # alpha = 1 - 2*df_ensemble_match_diff['Difference to second best simulation'][idx]
-                    
+
                     elif sim_keyword == 'atmos-only':
                         if forcing == 'SSTfuture':
                             # display big
-                            
+
                             markersize = 11
                         else: # forcing == 'future'
                             # smaller
                             markersize = 9  - markersize_scale*df_ensemble_match_diff['Difference to second best simulation'][idx]
-                    
+
                             # alpha = 1 - 2*df_ensemble_match_diff['Difference to second best simulation'][idx]
 
 
@@ -289,13 +289,13 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
             # alpha = 0.9
 
             #plt.scatter(x_idx, df['mean'][1]*120, marker = marker, s = 130, c=color, alpha = 0.85)
-            
+
             # plot black errorbars
             # errorbars must be positive (one goes in minus y direction, the other in plus)
             # this line also plots the data!
             # yerr = df['sd'][1] # if I want to show the standard deviation
 
-            ax.errorbar(x_idx, df['mean'][1]*120, yerr=np.array([[abs(df['mean'][1]*120 - df['5.5%'][1]*120), abs(df['mean'][1]*120 - df['94.5%'][1]*120)]]).T, 
+            ax.errorbar(x_idx, df['mean'][1]*120, yerr=np.array([[abs(df['mean'][1]*120 - df['5.5%'][1]*120), abs(df['mean'][1]*120 - df['94.5%'][1]*120)]]).T,
                         c=color, markeredgecolor = 'k', ecolor=color, markersize = markersize, marker=marker ) # , alpha=0.8
                     # ecolor='k'
 
@@ -305,31 +305,35 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
 
             # individual color for every site
             ax.axvspan(idx, idx + 1, alpha=0.07, color=ls_hex[idx])
-                        
+
             # for legend
             if idx == 0:
                 if forcing=='present':
-                    my_label = 'SST present (atmos-only)'
+                    my_label = 'atmos-past'
                 elif forcing == 'SSTfuture':
-                    my_label = 'SST future (atmos-only)'
+                    my_label = 'atmos-future'
                 elif forcing == 'hist':
-                    my_label = 'hist (coupled)'
-                else: # forcing == future
-                    my_label = 'future (coupled)'
+                    my_label = 'coupled-past'
+                elif forcing == 'future': # forcing == future
+                    my_label = 'coupled-future'
+                else: # ERA5
+                    my_label = 'ERA5'
                 # for legend
                 line_list.append(Line2D([0], [0], linestyle = '', color = color, marker = marker, label = my_label))
-    
+
     # add line at y = 0.0 to emphasize the state zero
     ax.axhline(y=0, xmin=0, xmax=8, color = 'red')
 
     # append errorbar to legend
-    line_list.append(Line2D([0], [0], linestyle = '-', color = 'k', label = '89% percentile interval'))
+    line_list.append(Line2D([0], [0], linestyle = '-', color = 'k', label = '89% percentile interval')) # percentile
 
 
+    # revision: no legend!
+    # revision 2: legend!
     # legend only for last plot!
     if fig_idx == 13: # change..
         ax.legend(handles=line_list, loc='upper left', ncol = 2, bbox_to_anchor= (0, -0.35))
-    
+
     ax.set_xticks(np.arange(0, 8)) #, rotation = 60
 
     # for seeing, set same ylimits
@@ -344,7 +348,7 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
 
     # else, plot x-labels for all variables
     # set labels for the x axis (site names)
-    ax.set_xticklabels(ls_site_names)
+    ax.set_xticklabels(ls_site_names, fontsize=12)
 
     # shrink axis to make space for xlabels
     box = ax.get_position()
@@ -353,15 +357,15 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
     # set xlim (otherwise there is unused space left and right of the plots)
     ax.set_xlim(0, 8.1)
 
-    plt.setp( ax.xaxis.get_majorticklabels(), rotation=-25, ha="left" )
+    plt.setp( ax.xaxis.get_majorticklabels(), rotation=-25, ha="left")
 
     ax.set_ylabel(unit + ' per decade')
 
-    # write a), b) 
+    # write a), b)
     if title != None:
-        ax.set_title(climxa.alphabet_from_idx(fig_idx) + ') Trends in ' + title, fontsize=12, fontweight='bold')
+        ax.set_title(climxa.alphabet_from_idx(fig_idx) + ') trends in ' + title, fontsize=12, fontweight='bold')
     else:
-        ax.set_title(climxa.alphabet_from_idx(fig_idx) + ') Trends in ' + variable.replace('_', ' '), fontsize=12, fontweight='bold')
+        ax.set_title(climxa.alphabet_from_idx(fig_idx) + ') trends in ' + variable.replace('_', ' '), fontsize=12, fontweight='bold')
 
 
     # save fig
@@ -373,14 +377,14 @@ def trend_analysis_plot(variable, gs, fig, fig_idx):
 
     return fig
 
-#%% skill score
+#%% main plot
 
 # first, do it for version with in-situ as reference,
 # next, do it for version with ERA5 as reference
 # plot all in one plot
 
-# choose if we should compute the tables or read in saved csv files
-compute = True
+# choose if we should compute the tables or read in saved csv files (skill scores)
+compute = False
 
 # prepare figure
 fig = plt.figure(figsize = (18, 26)) # ,constrained_layout=True) --> not needed anymore (I moved the ax4 a bit closer to the rest)
@@ -391,7 +395,7 @@ gs = fig.add_gridspec(7, 2) # first entry: rows, second entry: columns
 ls_var = ['T','RH','SH', 'TCW', 'total_cloud_cover', 'wind_speed_seeing', 'seeing_osborn']
 # ls_var = ['T','RH','SH']
 # ls_var = ['wind_speed_seeing', 'seeing_osborn']
- 
+
 max_idx = len(ls_var) - 1
 
 # for fig_idx in range(0,14):
@@ -401,7 +405,7 @@ max_idx = len(ls_var) - 1
 for fig_idx in range(0,14):
     # we plot two subplots per variable
 
-    if fig_idx % 2 == 0: 
+    if fig_idx % 2 == 0:
         # then we are in first column, where we want to plot the skill score classification
 
         idx = int(fig_idx/2)
@@ -487,7 +491,7 @@ for fig_idx in range(0,14):
             df_ERA5_insitu.to_csv('./Astroclimate_outcome/skill_score_classification/ERA5_skill_score_classification_' + var + '.csv', index=False)
             df_PRIMAVERA_insitu.to_csv('./Astroclimate_outcome/skill_score_classification/PRIMAVERA_skill_score_classification_' + var + '.csv', index=False)
             df_class_insitu.to_csv('./Astroclimate_outcome/skill_score_classification/PRIMAVERA_and_ERA5_to_insitu_skill_score_for_plotting_' + var + '.csv', index=False)
-        
+
         else:
             df_class_insitu = pd.read_csv('./Astroclimate_outcome/skill_score_classification/PRIMAVERA_and_ERA5_to_insitu_skill_score_for_plotting_' + var + '.csv')
 
@@ -512,10 +516,10 @@ for fig_idx in range(0,14):
 
             # we need to save best matching simulation (hist or SST present?)
             df_ensemble_match_diff.to_csv('./Astroclimate_outcome/skill_score_classification/PRIMAVERA_Ensemble_skill_score_difference_' + var + '.csv', index=False)
-        
+
             # save df_class_PRIMAVERA_to_ERA5 for plotting
             df_class_PRIMAVERA_to_ERA5.to_csv('./Astroclimate_outcome/skill_score_classification/PRIMAVERA_Ensemble_skill_score_for_plotting_' + var + '.csv', index=False)
-        
+
         else: # read in files
             df_class_PRIMAVERA_to_ERA5 = pd.read_csv('./Astroclimate_outcome/skill_score_classification/PRIMAVERA_Ensemble_skill_score_for_plotting_' + var + '.csv')
 
@@ -530,11 +534,11 @@ for fig_idx in range(0,14):
         ######### do not sort in second approach (where we combine both)
 
         # draw barplots with skill scores (sorted after PRIMAVERA)
-        ax.barh(2* df_class_insitu.index, df_class_insitu['ERA5'], height=0.4,  align='center', color = '#0072b2', label='ERA5 to in-situ')
-        ax.barh(2* df_class_insitu.index + 0.4, df_class_insitu['PRIMAVERA'], height=0.4, align='center', color = '#e69f00', label='PRIMAVERA to in-situ')
+        ax.barh(2* df_class_insitu.index, df_class_insitu['ERA5'], height=0.4,  align='center', color = '#0072b2', label='ERA5 versus in-situ')
+        ax.barh(2* df_class_insitu.index + 0.6, df_class_insitu['PRIMAVERA'], height=0.4, align='center', color = '#e69f00', label='PRIMAVERA versus in-situ')
 
         # add PRIMAVERA to ERA5 (df_class_PRIMAVERA_to_ERA5)
-        ax.barh(2* df_class_PRIMAVERA_to_ERA5.index + 0.8, df_class_PRIMAVERA_to_ERA5['PRIMAVERA'], height=0.4,  align='center', color = 'red', label='PRIMAVERA to ERA5')
+        ax.barh(2* df_class_PRIMAVERA_to_ERA5.index + 1.0, df_class_PRIMAVERA_to_ERA5['PRIMAVERA'], height=0.4,  align='center', color = 'red', label='PRIMAVERA versus ERA5')
 
         # define from where we take index and site (shouldn't matter)
         df_class_sorted = df_class_insitu
@@ -546,21 +550,22 @@ for fig_idx in range(0,14):
 
         # ax.set_title(folder_name)
         # x label
-        ax.set_xlabel('skill score') # , fontsize=10 , # y = 0 is ignored!
+        ax.set_xlabel('skill score', fontsize=12) # , fontsize=10 , # y = 0 is ignored!
         ax.xaxis.set_label_coords(0.5, -0.025)
 
         ax.set_xlim(0,1)
 
+        # revision: no legend!
+        # revision2: legend!
         # set legend only for last subplot
-
         if var == ls_var[max_idx]: # only true for last index
             ax.legend(loc='upper left', bbox_to_anchor= (0, -0.25))
-            
+
         # set title
         # ax (gca()) and not plt.gcf()
         # plt.gca().text(0.5, 1.2, variable, horizontalalignment='center', fontsize=16)
-        
-        ax.set_title(climxa.alphabet_from_idx(fig_idx) + ') Model Evaluation of ' + variable, y = 1.1, fontsize=12, fontweight='bold')
+
+        ax.set_title(climxa.alphabet_from_idx(fig_idx) + ') model evaluation of ' + variable, y = 1.1, fontsize=12, fontweight='bold')
 
         # shrink axis to make space for xlabels
         box = ax.get_position()
@@ -585,8 +590,9 @@ for fig_idx in range(0,14):
         fig = trend_analysis_plot(var, gs, fig, fig_idx)
 
 # save figure after loop
-fig.savefig('./publication/figures/'  + 'All_vars' + '_skillScores_and_Trends.pdf', bbox_inches = 'tight', pad_inches=0.0)
-
+fig.savefig('./publication/revision2/figures/'  + 'All_vars' + '_skillScores_and_Trends.pdf', bbox_inches = 'tight', pad_inches=0.0)
+# save as png for powerpoint
+fig.savefig('./publication/revision2/figures/'  + 'All_vars' + '_skillScores_and_Trends.png', bbox_inches = 'tight', pad_inches=0.0, dpi=600)
 
 
 # %%

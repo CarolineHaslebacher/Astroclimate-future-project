@@ -118,22 +118,41 @@ def get_seeing_variables(idx, d_site_lonlat_data):
 
 for idx in range(0,8):
 
-    if idx == 1:
+    if idx == 7:
         # already saved
         continue
 
     site_name_folder = d_site_lonlat_data['site_name_folder'][idx]
 
-    # read data
+    # read data (this is hourly data!)
     ds_u_v_t = get_seeing_variables(idx, d_site_lonlat_data)
+    # or resample monthly first? --> yes, this  makes the PIs a bit narrower and comparable to PRIMAVERA
+    ds_u_v_t_resampled = ds_u_v_t.resample(time = '1m').mean()
 
     # calculate time median and store! (load next time)
-    ds_median = ds_u_v_t.median(dim='time')
+    # ds_median = ds_u_v_t.median(dim='time')
+    # ds_25PI = ds_u_v_t.quantile(q=0.25, dim='time')
+    # ds_75PI = ds_u_v_t.quantile(q=0.75, dim='time')
+
+    # take monthly resampled data
+    ds_median = ds_u_v_t_resampled.median(dim='time')
+    ds_25PI = ds_u_v_t_resampled.quantile(q=0.25, dim='time')
+    ds_75PI = ds_u_v_t_resampled.quantile(q=0.75, dim='time')
+
+    # test with:
+    #   plt.plot(ds_median.u)
+    #   plt.plot(ds_25PI.u)
+    #   plt.plot(ds_75PI.u)
+
+    # combine to one xarray if quickly done
+    ds_iqr = xr.concat([ds_25PI, ds_75PI], dim='quantile')
 
     # save to netcdf
     median_path = './Astroclimate_outcome/median_nc_u_v_t/' + site_name_folder + '_median_ERA5_u_v_t_z.nc'
+    iqr_path = './Astroclimate_outcome/median_nc_u_v_t/' + site_name_folder + '_IQR_ERA5_u_v_t_z.nc'
 
     ds_median.to_netcdf(median_path)
+    ds_iqr.to_netcdf(iqr_path)
 
 
 #%%

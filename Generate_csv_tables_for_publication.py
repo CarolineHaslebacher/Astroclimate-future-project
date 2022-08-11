@@ -3,7 +3,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
- 
+
 import netCDF4
 import xarray as xr
 
@@ -72,8 +72,36 @@ ls_var = ['T','RH','SH', 'TCW', 'total_cloud_cover', 'wind_speed_seeing', 'seein
 # ls_var = ['total_cloud_cover']
 # ls_var = ['seeing_osborn']
 
-#%%
+#%% skill score tables for publication
 
+# revision:
+# SST present --> atmos-past
+# hist --> coupled-past
+# SST future --> atmos-future
+# future --> coupled-future
+simdict = {'hist': 'coupled-past', 'SST present': 'atmos-past',
+            'SST future': 'atmos-future', 'future': 'coupled-future',
+            'ERA5': 'ERA5',
+            '...': '...', '.....': '.....'} # last line needed as a small workaround
+
+# revision 2: implement color dictionary (commands are defined in overleaf latex file)
+coldict = {'Poor': r'\hlpoor{', 'Mediocre': r'\hlmediocre{', 'Good': r'\hlgood{', 'Excellent': r'\hlexcellent{'}
+# % \hlpoor{poor}
+# % \hlmediocre{mediocre}
+# % \hlgood{good}
+# % \hlexcellent{excellent}
+### commands in overleaf
+# % poor skill score --> red
+# \DeclareRobustCommand{\hlpoor}[1]{{\sethlcolor{Red3}\hl{#1}}}
+# % mediocre --> orange
+# \DeclareRobustCommand{\hlmediocre}[1]{{\sethlcolor{Red1}\hl{#1}}}
+# % good --> lightcyan? Cyan1
+# \DeclareRobustCommand{\hlgood}[1]{{\sethlcolor{Orange1}\hl{#1}}}
+# % excellent --> darker cyan
+# \DeclareRobustCommand{\hlexcellent}[1]{{\sethlcolor{Khaki1}\hl{#1}}}
+
+
+#%%
 
 for idx, var in enumerate(ls_var):
 
@@ -106,47 +134,58 @@ for idx, var in enumerate(ls_var):
     # append columns to table
     # we do not need the column where pressure levels are defined!
     # skill_score_master_table[var + ' ERA5 classification'] = df_ERA5_insitu['classification']
-    skill_score_master_table['E to i'] = df_ERA5_insitu['classification'].replace(' ', '...')
+    # skill_score_master_table['ERA5 to in situ'] = df_ERA5_insitu['classification'].replace(' ', '...')
+    # revision 2: highlight
+    skill_score_master_table['ERA5 to in situ'] = [coldict[x.split(' ')[0]] + f"{float(x.split(' ')[1].replace('(', '').replace(')', '')):.2f}" + '}' if len(x) > 2 else x.replace(' ', '...')  for x in df_ERA5_insitu['classification']]
 
 
-    # PRIMAVERA to in-situ
+
+    # PRIMAVERA to in-situ, simulation
     if var == 'cloud cover' or var == '200hPa-seeing': # single level var, no need to strip pressure level from 'hist' or 'present'
         # skill_score_master_table[var + ' PRIMAVERA to in-situ data'] = df_PRIMAVERA_insitu[var]
-        skill_score_master_table['P to i sim'] = df_PRIMAVERA_insitu[var].replace('nm', '...')
+        skill_score_master_table[r'\makecell[l]{PRIMAVERA (to in \\situ) simulation}'] = [simdict[x] for x in df_PRIMAVERA_insitu[var].replace('nm', '...')]
     elif var == 'seeing model':
         # now we have only 5hPa instead of 200hPa
-        skill_score_master_table['P to i sim'] = [x[5:] for x in df_PRIMAVERA_insitu[var].replace('nm', '..........')]
-    
+        skill_score_master_table[r'\makecell[l]{PRIMAVERA (to in \\situ) simulation}'] = [simdict[x[5:]] for x in df_PRIMAVERA_insitu[var].replace('nm', '..........')]
+
     else:
         # skill_score_master_table[var + ' PRIMAVERA to in-situ data'] = [x[7:] for x in df_PRIMAVERA_insitu[var]]
-        skill_score_master_table['P to i sim'] = [x[7:] for x in df_PRIMAVERA_insitu[var].replace('nm', '..........')]
-    
+        skill_score_master_table[r'\makecell[l]{PRIMAVERA (to in \\situ) simulation}'] = [simdict[x[7:]] for x in df_PRIMAVERA_insitu[var].replace('nm', '..........')]
+
+    # skill score
     # skill_score_master_table[var + ' PRIMAVERA to in-situ classification'] = df_PRIMAVERA_insitu['classification']
-    skill_score_master_table['P to i'] = df_PRIMAVERA_insitu['classification'].replace(' ', '...')
+    skill_score_master_table[r'\makecell[l]{PRIMAVERA\\to in situ}'] = [coldict[x.split(' ')[0]] + f"{float(x.split(' ')[1].replace('(', '').replace(')', '')):.2f}" + '}' if len(x) > 2 else x.replace(' ', '...')  for x in df_PRIMAVERA_insitu['classification']]
 
 
-    # PRIMAVERA to ERA5
+    # PRIMAVERA to ERA5, simulation
     if var == 'cloud cover' or var == '200hPa-seeing':
         # column has no pressure level attribute (single level data!)
         # skill_score_master_table[var + ' PRIMAVERA to ERA5 data'] = df_PRIMAVERA_to_ERA5[var]
-        skill_score_master_table['P to E sim'] = df_PRIMAVERA_to_ERA5[var] 
+        skill_score_master_table[r'\makecell[l]{PRIMAVERA (to\\ERA5) simulation}'] = [simdict[x] for x in df_PRIMAVERA_to_ERA5[var]]
     elif var == 'seeing model':
         # now we have only 5hPa instead of 200hPa
-        skill_score_master_table['P to E sim'] = [x[5:] for x in df_PRIMAVERA_to_ERA5[var]]
+        skill_score_master_table[r'\makecell[l]{PRIMAVERA (to\\ERA5) simulation}'] = [simdict[x[5:]] for x in df_PRIMAVERA_to_ERA5[var]]
     else:
         # skill_score_master_table[var + ' PRIMAVERA to ERA5 data'] = [x[7:] for x in df_PRIMAVERA_to_ERA5[var]]
-        skill_score_master_table['P to E sim'] = [x[7:] for x in df_PRIMAVERA_to_ERA5[var]]
-    # skill_score_master_table[var + ' PRIMAVERA to ERA5 classification'] = df_PRIMAVERA_to_ERA5['classification']
-    skill_score_master_table['P to E'] = df_PRIMAVERA_to_ERA5['classification']
+        skill_score_master_table[r'\makecell[l]{PRIMAVERA (to\\ERA5) simulation}'] = [simdict[x[7:]] for x in df_PRIMAVERA_to_ERA5[var]]
 
-    
+    # skill score:
+    # skill_score_master_table[var + ' PRIMAVERA to ERA5 classification'] = df_PRIMAVERA_to_ERA5['classification']
+    # skill_score_master_table['PRIMAVERA to ERA5'] = df_PRIMAVERA_to_ERA5['classification']
+    # revision 2: insert colorhighlight, remove 'mediocre' and so on
+    skill_score_master_table['PRIMAVERA to ERA5'] = [coldict[x.split(' ')[0]] + f"{float(x.split(' ')[1].replace('(', '').replace(')', '')):.2f}" + '}' for x in df_PRIMAVERA_to_ERA5['classification']]
+
+
 # save to csv
 # can be imported to libreoffice or outlook for example
 # skill_score_master_table.to_csv('./Astroclimate_outcome/skill_score_classification/Skill_score_master_table_all_vars.csv')
 
     # Table is way too big.
     # make it shorter with shorter column headers and save for every variable
-    skill_score_master_table.to_csv('./publication/tables/to_appendix/Skill_Score_master_table_'+ var.replace(' ', '_') + '.csv', index = False) #, quoting=0) #, quoting=csv.QUOTE_NONE, quotechar='', escapechar='' )
+    os.makedirs('./publication/revision2/tables/to_appendix/', exist_ok=True)
+    skill_score_master_table.to_csv('./publication/revision2/tables/to_appendix/Skill_Score_master_table_'+ var.replace(' ', '_') + '.csv', index = False,
+    float_format='%.2f') #, quoting=0) #, quoting=csv.QUOTE_NONE, quotechar='', escapechar='' )
+
 
 #%% informal skill_scores table
 
@@ -268,7 +307,7 @@ for idx, variable in enumerate(ls_var):
         ls_error_above = []
 
         for idx in range(0, 8):
-            
+
             site_name_folder = d_site_lonlat_data['site_name_folder'][idx]
 
             if idx == 0: # mauna kea
@@ -288,31 +327,41 @@ for idx, variable in enumerate(ls_var):
                 # read PRIMAVERA csv
                 df = pd.read_csv(base_path + site_name_folder + '_' + forcing + attrib[idx] + variable + '_' + '_PRIMAVERA_Projections_Bayesian_model_map2stan.csv')
 
-            # rename 
+            # rename
             df = df.rename(columns={'Unnamed: 0': 'parameter'})
 
             # change string of forcing
             if forcing == 'present':
-                my_forcing_label = 'SST present'
+                tempforcing = 'SST present'
+                my_forcing_label = simdict[tempforcing]
             elif forcing == 'SSTfuture':
-                my_forcing_label = 'SST future'
+                tempforcing = 'SST future'
+                my_forcing_label = simdict[tempforcing]
             else:
-                my_forcing_label = forcing
+                # label: (from simdict, revision!)
+                my_forcing_label = simdict[forcing]
 
             # get slope and errorbars
+            # *120 for 12 months and 10 years?
             my_slope = df['mean'][1]*120
-            my_error_below = df['5.5%'][1]*120# 89 percentile interval
+            my_error_below = df['5.5%'][1]*120 # 89 percentile interval
             my_error_above = df['94.5%'][1]*120
 
-            # ax.errorbar(x_idx, df['mean'][1]*120, yerr=np.array([[abs(df['mean'][1]*120 - df['5.5%'][1]*120), abs(df['mean'][1]*120 - df['94.5%'][1]*120)]]).T, 
+            # convert to +/- errors
+            pluserr = abs(my_error_above - my_slope)
+            minerr = abs(my_error_below - my_slope)
+
+            # ax.errorbar(x_idx, df['mean'][1]*120, yerr=np.array([[abs(df['mean'][1]*120 - df['5.5%'][1]*120), abs(df['mean'][1]*120 - df['94.5%'][1]*120)]]).T,
             #             c=color, markeredgecolor = 'k', ecolor=color, markersize = markersize, marker=marker ) # , alpha=0.8
             #         # ecolor='k'
 
             # fill list (round numbers!)
-            
+
             # for FORMAL LATEX:
-            ls_trends.append(r'\makecell[l]{' +  str(climxa.round_significant(my_slope, 2)) + r'\\ (' + str(climxa.round_significant(my_error_below, 2)) + r'; ' + str( climxa.round_significant(my_error_above, 2)) + ')}' )
-            
+            # ls_trends.append(r'\makecell[l]{' +  '{:.2f}'.format(climxa.round_significant(my_slope, 2)) + r'\\ (' + '{:.2f}'.format(climxa.round_significant(my_error_below, 2)) + r'; ' + '{:.2f}'.format( climxa.round_significant(my_error_above, 2)) + ')}' )
+            # revision 2: new format: $0.51\substack{+0.24\\-0.27}$
+            ls_trends.append('{:.2f}'.format(climxa.round_significant(my_slope, 2)) + r'$\substack{+' + '{:.2f}'.format(climxa.round_significant(pluserr, 2)) + r'\\-' + '{:.2f}'.format(climxa.round_significant(minerr, 2)) + r'}$')
+
             # for informal, UNCOMMENT:
             # ls_trends.append(climxa.round_significant(my_slope, 2))
 
@@ -336,7 +385,7 @@ for idx, variable in enumerate(ls_var):
         # list only for headers
         ls_informal_errorbars.append([variable + ' ' + forcing + ' error below [' + unit + ' per decade]'])
         ls_informal_errorbars.append([variable + ' ' + forcing + ' error above [' + unit + ' per decade]'])
-        
+
 
 # save to .csv
 # trends_master_table.to_csv('./Astroclimate_outcome/Trends_master_table_all_forcings_all_vars.csv')
@@ -345,9 +394,9 @@ for idx, variable in enumerate(ls_var):
     # save every variable in one file..!
     # and shorten titles!
     # escapechar because we have a comma!!
-    # 
-    # 
-    trends_master_table.to_csv('./publication/tables/to_appendix/Trends_master_table_all_forcings_'+ variable + '.csv', index = False) #, quoting=0) #, quoting=csv.QUOTE_NONE, quotechar='', escapechar='' )
+    #
+    #
+    trends_master_table.to_csv('./publication/revision2/tables/to_appendix/Trends_master_table_all_forcings_'+ variable + '.csv', index = False) #, quoting=0) #, quoting=csv.QUOTE_NONE, quotechar='', escapechar='' )
 
 
 # %% calculate mean trends with informal table 'informal_trends_table'
@@ -384,7 +433,7 @@ for idx, variable in enumerate(ls_var):
 # # save to .csv
 # informal_trends_average.to_csv('./publication/Trends_master_table_all_forcings_all_vars_informal.csv')
 
-df_min = pd.DataFrame(columns=informal_trends_table.columns) 
+df_min = pd.DataFrame(columns=informal_trends_table.columns)
 df_max = pd.DataFrame(columns=informal_trends_table.columns)
 # df_2050 = pd.DataFrame(columns=informal_trends_table.columns) # until 2050 (= 3 decades from now)
 

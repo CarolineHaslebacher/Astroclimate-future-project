@@ -4,6 +4,9 @@ library(rethinking)
 library(ggplot2)
 library("rstan")
 
+# check figure margins
+par(mar=c(1,1,1,1))
+
 options(mc.cores = parallel::detectCores())
 # To avoid recompilation of unchanged Stan programs, we recommend calling
 rstan_options(auto_write = TRUE)
@@ -15,9 +18,9 @@ source('./chaldene/Astroclimate_Project/sites/R_Astroclim.R')
 ######### choose a variable
 
 
-# cvars <- c( 'T', 'total_cloud_cover', 'SH', 'RH', 'TCW', 'seeing_osborn', 'wind_speed_seeing') # add 'T' for completeness
+cvars <- c( 'T', 'total_cloud_cover', 'SH', 'RH', 'TCW', 'seeing_osborn', 'wind_speed_seeing') # add 'T' for completeness 'T', 
 # cvars <- c('T', 'RH', 'SH')
-cvars <- c('seeing_osborn')
+# cvars <- c('total_cloud_cover')
 
 ##########################################
 for (variable in cvars) {
@@ -115,7 +118,7 @@ for (variable in cvars) {
   # [7]: SPM --> 8
   
   csites <- c("Mauna_Kea", "Cerro_Paranal", "La_Silla", "Cerro_Tololo", "La_Palma", "Siding_Spring", "Sutherland", "SPM")
-  # csites <- c("Mauna_Kea", "Cerro_Paranal")
+  # csites <- c("Siding_Spring") # , "Cerro_Paranal"
   
   
   path_list <- c()
@@ -138,7 +141,8 @@ for (variable in cvars) {
   
   
   
-  ##### density plots
+  ##### density plots (uncomment below to store density plots)
+  # # function stored in R_Astroclim.R
   # density_plots_insitu(base_path, csites, cpressure)
   
   ############################# map2stan
@@ -146,8 +150,9 @@ for (variable in cvars) {
   # write.csv(my_df,  paste(base_path, 'Temperature_ERA5_trends.csv' , sep=''), row.names=T)
   
   
-  
-  pdf(width=8, height=18, pointsize=10, file=paste(base_path, variable, "_Linear_fit_monthly_timeseries_map2stan.pdf" , sep=''))
+  # width=8, height=18
+  # make quadratic!
+  pdf(width=10, height=10, pointsize=10, file=paste(base_path, variable, "_Linear_fit_monthly_timeseries_map2stan.pdf" , sep=''))
   par(mfrow=c(8,1)) # , mai=c(0.1,0.1,0.1,0.1)) 
   
   
@@ -208,13 +213,13 @@ for (variable in cvars) {
         m1 <- map2stan(
           alist(
             temp ~ dnorm(  mu , sigma ) ,
-            mu <- a + b*month_index + Amp*sin(2*3.14159265359/12 * ( month_index + x)), # p. 113 # map2stan did not regognize pi, so I use 3.14159265359
+            mu <- a + b*month_index + Amp*sin(2*3.14159265359/12 * ( month_index + x)), # map2stan did not regognize pi, so I use 3.14159265359
             #a ~ dnorm( mean(d$temp) , 5 ) ,
             a ~ dnorm( a_prior_mean , 5) ,
             b ~ dnorm( 0 , 3) ,
             Amp ~ dnorm(0, 6),
             x ~ dnorm(0 , 6),
-            sigma ~ dunif( 0 , 10 )
+            sigma ~ dunif( 0 , 10 ) # or better dcauchy(0, 10) ?
           ) ,
           data=d.trim ) #,
         # start=list(a=a_prior_mean))
@@ -224,6 +229,36 @@ for (variable in cvars) {
     
     print(precis( m1 , digits = 5, corr=TRUE))
     pr1 <- precis(m1) # access with pr1['b', 'mean']
+    
+    # check R_hat (it should approach 1 from above)
+    # if R_hat is within 2% deviation of 1
+    for (coefis in c('a', 'b', 'Amp', 'x', 'sigma')){
+      if (pr1[coefis, 'Rhat4'] > 1.02 | pr1[coefis, 'Rhat4'] < 0.98){
+        # append message to csv
+        # so that I can investigate
+        write.table(data.frame(path, coefis ,pr1[coefis, 'Rhat4']), file="./chaldene/Astroclimate_Project/model_evaluation/Rhat_unhealthy.csv", append=TRUE, col.names=FALSE, row.names = FALSE, sep=',')
+      }
+      
+    }
+      
+    
+    # extract samples and save them!
+    post_csv_name <- paste(csites[idx], cpressure[idx], '_', variable , '_samples_from_posterior.csv' , sep='')
+    sub_dir <- paste(variable, csites[idx], 'ERA5/', sep='/')
+    output_dir <- file.path("./chaldene/Astroclimate_Project/publication/posterior_distribution_samples", sub_dir)
+    
+    if (!dir.exists(output_dir)){
+      dir.create(output_dir, recursive=TRUE)
+    } else {
+      print("Dir already exists!")
+    }
+    # extract samples
+    post <- extract.samples(m1)
+    # save post
+    write.csv(post, paste(output_dir, post_csv_name, sep=''), row.names=T)
+    
+    ####### saving samples done
+    
     
     mu <- link( m1 , data=data.frame(month_index=d$month_index) )
     
@@ -260,6 +295,8 @@ for (variable in cvars) {
     bstr55.2 <- formatC(bstr55 * 12, digits=3,format="fg", flag="#")
     bstr945.2 <- formatC(bstr945 * 12, digits=3,format="fg", flag="#")
     
+    print(par("mar"))
+    
     plot( temp ~ month_index , data=d , col=col.alpha(rangi2,0.8), ylim= c(mean(d$temp)-offset, mean(d$temp)+offset),  cex=1, pch=19 , ylab = ylabel,font.main = 1, main=paste(csites[idx], cpressure[idx] , sep=' ')) #
     mtext(paste('b = ', bstr1.2," \u00B1 ",stdstr1.2, ' ', unit, '/year\n89%-Interval = (', bstr55.2, ', ',bstr945.2,') ' ,unit ,'/year', sep=''), 
           side=3, line=-2, cex=0.7)
@@ -279,7 +316,7 @@ for (variable in cvars) {
     # plot pairs
     pairs(m1)
     
-    # write output to .csv
+    # write output of 'precis' to .csv
     write.csv(pr1,  paste(base_path, csites[idx], cpressure[idx],  variable , '_', '_ERA5_Projections_Bayesian_model_map2stan.csv' , sep=''), row.names=T)
     
   }

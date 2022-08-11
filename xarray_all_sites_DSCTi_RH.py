@@ -79,9 +79,9 @@ d_site_lonlat_data = pickle.load( open( "/home/haslebacher/chaldene/Astroclimate
 max_idx = 7 # starts at 0 (max is 7)
 
 diurnal=False
-Ensemble = True
+Ensemble = False
 masterfigure = False
-save = True
+save = False
 model = True
 
 if masterfigure == True:
@@ -99,8 +99,8 @@ if diurnal:
 else:
     fig_diurnal = None
 
-for idx in range(0, max_idx+1):
-#for idx in range(3,4):
+# for idx in range(0, max_idx+1):
+for idx in range(3,4):
 
     # or define index for one iteration only
     # idx = 3

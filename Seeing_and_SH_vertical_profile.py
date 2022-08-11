@@ -5,13 +5,13 @@
 import os
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd 
- 
+import pandas as pd
+
 import netCDF4
 import xarray as xr
 
-import xarray.plot as xplt 
-#import sunpy.timeseries as ts 
+import xarray.plot as xplt
+#import sunpy.timeseries as ts
 
 ########## for cycle ##############
 from matplotlib import dates as d
@@ -23,8 +23,12 @@ from functools import reduce
 from scipy import stats
 import csv
 import copy
- 
+
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+
+# revision: for xticks in log scale
+import matplotlib.ticker
 
 import sys
 sys.path.append('/home/haslebacher/chaldene/Astroclimate_Project/sites/')
@@ -74,8 +78,8 @@ d_site_lonlat_data = pickle.load( open( "/home/haslebacher/chaldene/Astroclimate
 
 # loop through sites
 # create a big plot (all 8 sites on one pdf page)
-fig = plt.figure(figsize = (14, 20)) #,constrained_layout=True) # (this is not compatible with tight_layout)
-
+fig = plt.figure(figsize = (17, 20)) #,constrained_layout=True) # (this is not compatible with tight_layout)
+# 14, 20
 gs = fig.add_gridspec(3, 3)
 
 # ax1 = fig.add_subplot(gs[0, 0]) # diurnal cycle
@@ -110,10 +114,10 @@ for idx in range(0, 8):
                     "MPI": {"folders": ['hist', 'present'],"taylor_folder": ['hist','present'],"single_lev_var": list_of_single_level_model_clim_params, "name": "MPI-ESM1-2-XR"},
                     "CMCC": {"folders": ['hist','present', 'future', 'SSTfuture'],"taylor_folder": ['hist','present'],"single_lev_var": list_of_single_level_model_clim_params, "name": "CMCC-CM2-VHR4"},
                     "ECMWF": {"folders": ['hist', 'present'],"taylor_folder": ['hist','present'],"single_lev_var": list_of_single_level_model_clim_params, "name": "ECMWF-IFS-HR"} }
-        
+
     # calculate d_Ensemble (there is no d_Ensemble of Cn2 stored somewhere up to now)
     d_Ensemble = {"folders": ['hist','present', 'future', 'SSTfuture'], "single_lev_var": list_of_single_level_model_clim_params}
-    
+
     for clim_key in d_model.keys():
 
         # read in ds_Cn2 for every model
@@ -123,18 +127,27 @@ for idx in range(0, 8):
     for forcing in d_Ensemble['folders']:
 
         ls_Cn2_primavera = []
+        ls_Cn2_75iqr_primavera = []
+        ls_Cn2_25iqr_primavera = []
 
         for clim_key in d_model.keys():
-            
+
             # # plot vertical profile (median)
             # plt.plot(d_model[clim_key]['ds_Cn2']["Cn2 " + forcing].median(dim='time'), d_model[clim_key]['ds_Cn2'].level)
-            
+
             # calculate ensemble for every forcing, take time median
             if forcing in d_model[clim_key]['folders']:
                 ls_Cn2_primavera.append(d_model[clim_key]['ds_Cn2']["Cn2 " + forcing].median(dim='time'))
+                # added Interquartile range on May 05 2021
+                ls_Cn2_25iqr_primavera.append(d_model[clim_key]['ds_Cn2']["Cn2 " + forcing].quantile(q=0.25, dim='time'))
+                ls_Cn2_75iqr_primavera.append(d_model[clim_key]['ds_Cn2']["Cn2 " + forcing].quantile(q=0.75, dim='time'))
+
 
         # compose d_Ensemble dataset
         d_Ensemble['Cn2 ' + forcing] = np.mean(ls_Cn2_primavera, axis=0)
+        d_Ensemble['Cn2 ' + forcing+ ' IQR 0.25'] = np.mean(ls_Cn2_25iqr_primavera, axis=0)
+        d_Ensemble['Cn2 ' + forcing+ ' IQR 0.75'] = np.mean(ls_Cn2_75iqr_primavera, axis=0)
+
 
     # plotting
     pr_levels_list = [1, 5, 10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000] # , 925, 1000
@@ -154,9 +167,19 @@ for idx in range(0, 8):
         elif forcing=='future':
             forced_linestyle = lin_st[2]
             color = 'red'
-        
-        ax.plot(d_Ensemble['Cn2 ' + forcing], pr_levels_list[0:(len(d_Ensemble['Cn2 ' + forcing]))], 
+        # revision: I just forgot the below line!!!!
+        elif forcing=='SSTfuture':
+            forced_linestyle = lin_st[3]
+            color = 'red'
+        else:
+            raise Warning('no corresponding linestyle selected!')
+
+        ax.plot(d_Ensemble['Cn2 ' + forcing], pr_levels_list[0:(len(d_Ensemble['Cn2 ' + forcing]))],
                         linestyle=forced_linestyle, color=color) # , marker='o'
+        # IQR fill between x-axis
+        ax.fill_betweenx(pr_levels_list[0:(len(d_Ensemble['Cn2 ' + forcing]))], d_Ensemble['Cn2 ' + forcing + ' IQR 0.25'],
+                                            d_Ensemble['Cn2 ' + forcing + ' IQR 0.75'], facecolor= color, alpha=0.1)
+
 
         # for legend
         line_list.append(Line2D([0], [0], linestyle = forced_linestyle, color = color, label = r'PRIMAVERA $C_n^2$ ' + forcing))
@@ -169,11 +192,14 @@ for idx in range(0, 8):
 
     # plot Cn2 profile
     ax.plot(ds_ERA5_Cn2['Cn2'].median(dim='time'), ds_ERA5_Cn2.level, linestyle = '-', color = '#009e73') # , marker='o' # goes until 50hPa (glad I included it until 50hPa!)
+    # plot interquartile range (fill between x-axis!)
+    ax.fill_betweenx(ds_ERA5_Cn2.level, ds_ERA5_Cn2['Cn2'].quantile(q=0.25, dim='time'), ds_ERA5_Cn2['Cn2'].quantile(q=0.75, dim='time'), facecolor= '#009e73', alpha=0.2) # , label='IQR'
 
     # for legend
     line_list.append(Line2D([0], [0], linestyle = '-', color = '#009e73', label = r'ERA5 $C_n^2$'))
+    # iqr (for all data! therefore, take black as the facecolor)
+    line_list.append(Patch(facecolor = 'k', label = 'IQR', alpha=0.1))
 
-    
 
     # maybe I have to cut off the integration of PRIMAVERA to get rid of the peak at 70hPa to increase correlation of osborn seeing?
 
@@ -186,22 +212,34 @@ for idx in range(0, 8):
         site_noUnderline = site_name_folder.replace('_', ' ')
 
     ax.set_xscale('log')
-    ax.set_yticks(np.arange(0, 1000, 100))
+    # revision: set xticks for log scale. From here: https://stackoverflow.com/questions/30887920/how-to-show-minor-tick-labels-on-log-scale-with-matplotlib
+    x_major = matplotlib.ticker.LogLocator(base = 10.0, numticks = 8)
+    ax.xaxis.set_major_locator(x_major)
+    x_minor = matplotlib.ticker.LogLocator(base = 10.0, subs = np.arange(1.0, 10.0) * 0.1, numticks = 10)
+    ax.xaxis.set_minor_locator(x_minor)
+    ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+
+    ax.set_yticks(np.arange(0, 1100, 100)) # revision: until 1100 instead of 1000, otherwise '1000hPa' is not plotted
     # ax.set_yticks(ds_ERA5_Cn2.level)
     plt.gca().invert_yaxis()
     ax.set_xlabel(r'$C_n^2$ $[m^{1/3}]$')
     ax.set_ylabel('Pressure [hPa]')
-    ax.set_title(site_noUnderline)
+    ax.set_title(climxa.alphabet_from_idx(idx) + ') ' + site_noUnderline)
     # ax.set_xlim(1e-19, 5e-17)
 
-    if idx == 7:
-        # plot legend into empty spot
-        # ax_legend = fig.add_subplot(gs[2,2]) # int((i idx - (idx%2))/2), idx%2
-        ax.legend(handles=line_list, loc='upper left', bbox_to_anchor= (1.1, 1))
+    # revision: no legend!
+    # if idx == 7:
+    #     # plot legend into empty spot
+    #     # ax_legend = fig.add_subplot(gs[2,2]) # int((i idx - (idx%2))/2), idx%2
+    #     ax.legend(handles=line_list, loc='upper left', bbox_to_anchor= (1.1, 1))
+
+# revision: slightly adjust plot (not sns.set() anymore)
+fig.subplots_adjust(hspace=0.3,
+                    wspace=0.3)
 
 # save fig
 fig.savefig('./Model_evaluation/seeing_nc/All_Sites_Cn2_vertical_profile.pdf', bbox_inches = 'tight', pad_inches=0.0)
-fig.savefig('./publication/figures/All_Sites_Cn2_vertical_profile.pdf', bbox_inches = 'tight', pad_inches=0.0)
+fig.savefig('./publication/revision/figures/All_Sites_Cn2_vertical_profile.pdf', bbox_inches = 'tight', pad_inches=0.0)
 
 plt.show()
 
@@ -245,10 +283,10 @@ def vertical_profile_ERA5_and_PRIMAVERA_SH(variable, list_of_clim_vars, list_of_
                         "MPI": {"folders": ['hist', 'present'],"taylor_folder": ['hist','present'],"clim_var": list_of_model_clim_params, 'Plev': ls_pr_levels_clim_model, "name": "MPI-ESM1-2-XR"},
                         "CMCC": {"folders": ['hist','present', 'future', 'SSTfuture'],"taylor_folder": ['hist','present'],"clim_var": list_of_model_clim_params, 'Plev': ls_pr_levels_clim_model, "name": "CMCC-CM2-VHR4"},
                         "ECMWF": {"folders": ['hist', 'present'],"taylor_folder": ['hist','present'],"clim_var": list_of_model_clim_params, 'Plev': ls_pr_levels_clim_model, "name": "ECMWF-IFS-HR"} }
-        
+
         # calculate d_Ensemble (there is no d_Ensemble of Cn2 stored somewhere up to now)
         d_Ensemble = {"folders": ['hist','present', 'future', 'SSTfuture'], "clim_var": list_of_model_clim_params}
-        
+
         # closest pressure level (I integrated the TCW until there)
         if idx == 5: # siding Spring
             closest_pr_lev = 925
@@ -262,13 +300,13 @@ def vertical_profile_ERA5_and_PRIMAVERA_SH(variable, list_of_clim_vars, list_of_
         elif idx == 0: # Mauna Kea
             closest_pr_lev = 600
 
-        # plotting 
+        # plotting
         pr_levels_list = [1000, 925, 850, 700, 600, 500, 400, 300, 250, 200, 150, 100, 70, 50, 30, 20, 10, 5, 1] # , 925, 1000
         pr_levels_list = pr_levels_list[pr_levels_list.index(closest_pr_lev):]
 
         for clim_key in d_model.keys():
             print(clim_key)
-            # read in ds_Cn2 for every model
+            # read in ds_SH for every model
             d_model[clim_key]['ds_SH'] = climxa.get_PRIMAVERA(d_model, clim_key, site_name_folder, pressure_level=True)
             # select lon/lat
             d_model[clim_key]['ds_SH_sel'] = d_model[clim_key]['ds_SH'].sel(level=pr_levels_list, longitude=lon, latitude=lat, method='nearest')
@@ -277,18 +315,26 @@ def vertical_profile_ERA5_and_PRIMAVERA_SH(variable, list_of_clim_vars, list_of_
         for forcing in d_Ensemble['folders']:
 
             ls_SH_primavera = []
+            ls_SH_25iqr_primavera = []
+            ls_SH_75iqr_primavera = []
 
             for clim_key in d_model.keys():
-                
+
                 # # plot vertical profile (median)
                 # plt.plot(d_model[clim_key]['ds_SH']["Cn2 " + forcing].median(dim='time'), d_model[clim_key]['ds_Cn2'].level)
-                
+
                 # calculate ensemble for every forcing, take time median
                 if forcing in d_model[clim_key]['folders']:
                     ls_SH_primavera.append(d_model[clim_key]['ds_SH_sel'][list_of_model_clim_params[0] + " " + forcing].median(dim='time'))
+                    # added Interquartile range on May 05 2021
+                    ls_SH_25iqr_primavera.append(d_model[clim_key]['ds_SH_sel'][list_of_model_clim_params[0] + " " + forcing].quantile(q=0.25, dim='time'))
+                    ls_SH_75iqr_primavera.append(d_model[clim_key]['ds_SH_sel'][list_of_model_clim_params[0] + " " + forcing].quantile(q=0.75, dim='time'))
 
             # compose d_Ensemble dataset
             d_Ensemble[list_of_model_clim_params[0] + ' ' + forcing] = np.mean(ls_SH_primavera, axis=0)
+            d_Ensemble[list_of_model_clim_params[0] + ' ' + forcing+ ' IQR 0.25'] = np.mean(ls_SH_25iqr_primavera, axis=0)
+            d_Ensemble[list_of_model_clim_params[0] + ' ' + forcing+ ' IQR 0.75'] = np.mean(ls_SH_75iqr_primavera, axis=0)
+
 
 
         lin_st = ['dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
@@ -306,20 +352,30 @@ def vertical_profile_ERA5_and_PRIMAVERA_SH(variable, list_of_clim_vars, list_of_
             elif forcing=='future':
                 forced_linestyle = lin_st[2]
                 color = 'red'
-            
-            ax.plot(d_Ensemble[list_of_model_clim_params[0] + ' ' + forcing], pr_levels_list, 
+            # revision: I just forgot the below line!!!!
+            elif forcing=='SSTfuture':
+                forced_linestyle = lin_st[3]
+                color = 'red'
+            else:
+                raise Warning('no corresponding linestyle selected!')
+
+
+            ax.plot(d_Ensemble[list_of_model_clim_params[0] + ' ' + forcing], pr_levels_list,
                             linestyle=forced_linestyle, color=color)
+            # IQR fill between x-axis
+            ax.fill_betweenx(pr_levels_list, d_Ensemble[list_of_model_clim_params[0] + ' ' + forcing + ' IQR 0.25'],
+                                                d_Ensemble[list_of_model_clim_params[0] + ' ' + forcing + ' IQR 0.75'], facecolor= color, alpha=0.1)
 
             # for legend
             line_list.append(Line2D([0], [0], linestyle = forced_linestyle, color = color, label = 'PRIMAVERA specific humidity ' + forcing))
 
 
-        
+
         #### ERA5
         # load data (code from 'calc_PWV_ERA5.py' and climxa.SH_integral_to_TCW(...))
         surface_pressure_observation = d_site_lonlat_data['pressure [hPa]'][idx]
         print(surface_pressure_observation)
-        # check available pressure for ERA5 
+        # check available pressure for ERA5
         absolute_difference_function = lambda list_value : abs(list_value - given_value)
         pr_levels_ERA5 = [250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 775, 800, 825, 850, 875, 900, 925] # siding spring is the upper limit with 892hPa
 
@@ -349,7 +405,7 @@ def vertical_profile_ERA5_and_PRIMAVERA_SH(variable, list_of_clim_vars, list_of_
         # find upper max index that corresponds to given pressure level
         pr_max_idx = pr_levels_all.index(SH_integral_pressure)
 
-        for i in range(0,pr_max_idx + 1): # 
+        for i in range(0,pr_max_idx + 1): #
             print(i)
             path =  '/home/haslebacher/chaldene/Astroclimate_Project/sites/'+ site_ERA + '/Data/Era_5/'+ variable + '/'+ str(pr_levels_all[i]) + 'hPa' +'/*.nc'
             ds = xr.open_mfdataset(path)
@@ -358,25 +414,31 @@ def vertical_profile_ERA5_and_PRIMAVERA_SH(variable, list_of_clim_vars, list_of_
                 ds_sel = ds_sel.sel(expver=5)
             # # line below: commented for generating hourly data for diurnal cycle
             # ds_sel = ds_sel.resample(time = '1m', keep_attrs=True).mean()
-            
+
             # assign pressure level
             ds_sel = ds_sel.assign_coords({"level": pr_levels_all[i]})
 
             SH_pressure_levels.append(ds_sel)
-        
+
         ds_ERA5_SH = xr.concat(SH_pressure_levels, dim = 'level')
+        # load xarray dataset
+        ds_ERA5_SH = ds_ERA5_SH.load()
 
         # plot Cn2 profile
         ax.plot(ds_ERA5_SH[list_of_clim_vars[0]].median(dim='time'), ds_ERA5_SH.level, linestyle = '-', color = '#009e73') # goes until 50hPa (glad I included it until 50hPa!)
+        # plot interquartile range (fill between x-axis!)
+        ax.fill_betweenx(ds_ERA5_SH.level, ds_ERA5_SH[list_of_clim_vars[0]].quantile(q=0.25, dim='time'), ds_ERA5_SH[list_of_clim_vars[0]].quantile(q=0.75, dim='time'), facecolor= '#009e73', alpha=0.2) # , label='IQR'
 
         # for legend
         line_list.append(Line2D([0], [0], linestyle = '-', color = '#009e73', label = 'ERA5 specific humidity'))
-
+        # iqr (for all data! therefore, take black as the facecolor)
+        line_list.append(Patch(facecolor = 'k', label = 'IQR', alpha=0.1))
 
         # maybe I have to cut off the integration of PRIMAVERA to get rid of the peak at 70hPa to increase correlation of osborn seeing?
 
-        if idx == 7:
-            ax.legend(handles=line_list, loc='upper left', bbox_to_anchor= (1.1, 1)) # (0, -0.2)
+        # revision: no legend!!
+        # if idx == 7:
+        #     ax.legend(handles=line_list, loc='upper left', bbox_to_anchor= (1.1, 1)) # (0, -0.2)
 
         # change site label
         if site_name_folder == 'MaunaKea':
@@ -387,13 +449,24 @@ def vertical_profile_ERA5_and_PRIMAVERA_SH(variable, list_of_clim_vars, list_of_
             site_noUnderline = site_name_folder.replace('_', ' ')
 
         ax.set_xscale('log')
+        # revision: set xticks for log scale. From here: https://stackoverflow.com/questions/30887920/how-to-show-minor-tick-labels-on-log-scale-with-matplotlib
+        x_major = matplotlib.ticker.LogLocator(base = 10.0, numticks = 8)
+        ax.xaxis.set_major_locator(x_major)
+        x_minor = matplotlib.ticker.LogLocator(base = 10.0, subs = np.arange(1.0, 10.0) * 0.1, numticks = 10)
+        ax.xaxis.set_minor_locator(x_minor)
+        ax.xaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+
         # ax.set_yticks(np.arange(0, 1000, 100)) # pressure levels
         plt.gca().invert_yaxis()
-        ax.set_title(site_noUnderline)
+        ax.set_title(climxa.alphabet_from_idx(idx) + ') ' + site_noUnderline)
 
         ax.set_xlabel(my_xlabel)
         ax.set_ylabel('Pressure [hPa]')
-        
+
+        # revision: adjust slightly
+        fig.subplots_adjust(hspace=0.3,
+                    wspace=0.3)
+
     return fig
 
 #%%
@@ -408,9 +481,10 @@ my_xlabel = 'Specific humidity [kg/kg]'
 
 fig = vertical_profile_ERA5_and_PRIMAVERA_SH(variable, list_of_clim_vars, list_of_model_clim_params, my_xlabel)
 
+
 # save fig
 fig.savefig('./Model_evaluation/SH/All_Sites_SH_vertical_profile.pdf', bbox_inches = 'tight', pad_inches=0.0)
-fig.savefig('./publication/figures/All_Sites_SH_vertical_profile.pdf', bbox_inches = 'tight', pad_inches=0.0)
+fig.savefig('./publication/revision/figures/All_Sites_SH_vertical_profile.pdf', bbox_inches = 'tight', pad_inches=0.0)
 
 plt.show()
 
@@ -442,7 +516,7 @@ def get_seeing_variables(idx, d_site_lonlat_data):
     else:
         my_ERA5_lon = lon
 
-    # use function which loads in all specific humidity datasets 
+    # use function which loads in all specific humidity datasets
     # and integrates them to specific humidity
 
     if site_ERA == 'Paranal': # Paranal
@@ -451,13 +525,13 @@ def get_seeing_variables(idx, d_site_lonlat_data):
         seeing_data_path =  './sites/' + site_ERA + '/Data/Era_5/seeing/'
 
     ds_seeing_vars = climxa.read_ERA5_seeing_data(seeing_data_path, my_ERA5_lon, lat)
-    ds_seeing_vars = ds_seeing_vars.load() # load here to prevent program from running 
+    ds_seeing_vars = ds_seeing_vars.load() # load here to prevent program from running
 
     return ds_seeing_vars
 
 # PRIMAVERA
 def get_PRIMAVERA_seeing_vars(idx):
-    
+
     # or define index for one iteration only
     # idx = 0
 
@@ -473,7 +547,7 @@ def get_PRIMAVERA_seeing_vars(idx):
     list_of_insitu_vars = ['Seeing ' + site_name_folder]
 
     # pressure level of seeing integration
-    path_seeing = d_site_lonlat_data['path_ds_seeing'][idx] 
+    path_seeing = d_site_lonlat_data['path_ds_seeing'][idx]
 
     # special case of siding_spring, where we have only yearly data:
     if idx == 5:
@@ -490,7 +564,7 @@ def get_PRIMAVERA_seeing_vars(idx):
         # read in ds_hourly (in-situ data)
         # ds_hourly = climxa.df_to_xarray('./sites/Paranal/Data/    # attention! taylor folders can change! think about that in the return...in-situ/hourly_meteo/hourly_Paranal_FA_Seeing_instantaneous_MASS_DIMM_free_atmosphere_1804.csv') # hourly_Paranal_Seeing.csv'), ['Seeing Paranal']
         ds_hourly = climxa.df_to_xarray(path_seeing)
-    
+
         mean_insitu = np.mean(ds_hourly[list_of_insitu_vars[0]])
 
     d_model = {"HadGEM": {"folders": ['hist','present', 'future', 'SSTfuture'],'Plev': ls_pr_levels_clim_model, "name": "HadGEM3-GC31-HM"},
@@ -511,7 +585,7 @@ def get_PRIMAVERA_seeing_vars(idx):
             d_model[clim_key]['clim_var'] = [seeing_var]
             # append dataset to list so that all seeing variables are in one dataset
             ds_temp = climxa.get_PRIMAVERA(d_model, clim_key, site_name_folder, pressure_level=True)
-            
+
             # ds_notfind = xr.open_dataset('/home/haslebacher/chaldene/Astroclimate_Project/sites/La_Palma/Data/HighResMIP/ua/Amon/CNRM/hist_notfind.nc')
             # ds = xr.open_dataset('/home/haslebacher/chaldene/Astroclimate_Project/sites/La_Palma/Data/HighResMIP/ua/Amon/CNRM/hist.nc')
             # ds.sel(lon=lon, lat=lat, method='nearest').dropna(dim='time')
@@ -530,7 +604,7 @@ def get_PRIMAVERA_seeing_vars(idx):
 
             ls_seeing_vars.append(ds_temp)
 
-        # compose dataset with ua, va and zg which we need to calculate the seeing 
+        # compose dataset with ua, va and zg which we need to calculate the seeing
         # for this, nothing gets computed!!
         d_model[clim_key]['ds_seeing'] = xr.merge(ls_seeing_vars, join='outer')
 
@@ -549,6 +623,24 @@ def plot_seeing_vars_vertical_profile(idx, d_model):
 
     fig, ax = plt.subplots(1,4, figsize = (16, 6), tight_layout = True)
 
+    ######
+
+    # if we want to have separate plots:
+    # define axis (use idx from site)
+    # ax_u = fig.add_subplot(gs_u[int((idx - (idx%3))/3), idx%3])
+    # ax_v = fig.add_subplot(gs_v[int((idx - (idx%3))/3), idx%3])
+    # ax_t = fig.add_subplot(gs_t[int((idx - (idx%3))/3), idx%3])
+    # ax_z = fig.add_subplot(gs_z[int((idx - (idx%3))/3), idx%3])
+
+
+    # fig = plt.figure(figsize = (14, 20)) # (this is not compatible with tight_layout)
+    # # (8, 20)
+    # gs = fig.add_gridspec(3, 3)
+    # define axis on which to plot; runs up from [0,0] to [3,1]
+    # ax = fig.add_subplot(gs[int((idx - (idx%3))/3), idx%3])
+
+    ###### above in development
+
     # ax1 = fig.add_subplot(gs[0,0]) # t
     # ax2 = fig.add_subplot(gs[0,1]) # u
     # ax3 = fig.add_subplot(gs[0,2]) # v
@@ -557,6 +649,9 @@ def plot_seeing_vars_vertical_profile(idx, d_model):
 
     lsclimvars = ['ta', 'ua', 'va', 'zg']
     ls_labels = [r'Temperature [$^{\circ}$ C]', 'eastward wind speed [m/s]', 'northward wind speed [m/s]', 'geopotential height [m]']
+    # initialize d_Ensemble dictionary
+    d_Ensemble = {"folders": ['hist','present', 'future', 'SSTfuture']} # , "clim_var": clim_var
+
 
     for climind, clim_var in enumerate(lsclimvars):
         print(climind)
@@ -565,70 +660,108 @@ def plot_seeing_vars_vertical_profile(idx, d_model):
 
         # calculate d_Ensemble (there is no d_Ensemble of Cn2 stored somewhere up to now)
         # feed clim_var and Plev
-        # d_Ensemble = {"folders": ['hist','present', 'future', 'SSTfuture'], "clim_var": clim_var}
-        
+
         # calculate ensemble mean of time medians
 
+        # old code below:
+        # for clim_key in d_model.keys():
+        #     for forcing in d_model[clim_key]['folders']:
+                # old: plot vertical profile (median) for every individual forcing and model
+                # ax[climind].plot(d_model[clim_key]['ds_seeing'][clim_var + " " + forcing].median(dim='time'), d_model[clim_key]['ds_seeing'].level,
+                #         linestyle = 'dotted', label='PRIMAVERA ' + clim_key + ' ' + forcing)
 
-            # ls_Cn2_primavera = []
+        for forcing in d_Ensemble['folders']:
 
-        for clim_key in d_model.keys():
-            for forcing in d_model[clim_key]['folders']:
-                
-                # plot vertical profile (median)
-                ax[climind].plot(d_model[clim_key]['ds_seeing'][clim_var + " " + forcing].median(dim='time'), d_model[clim_key]['ds_seeing'].level, 
-                        linestyle = 'dotted', label='PRIMAVERA ' + clim_key + ' ' + forcing)
-                
-        #         # calculate ensemble for every forcing, take time median
-        #         if forcing in d_model[clim_key]['folders']:
-        #             ls_Cn2_primavera.append(d_model[clim_key]['ds_seeing'][clim_var + " " + forcing].median(dim='time'))
+            ls_uvtz_primavera = []
+            ls_uvtz_25iqr_primavera = []
+            ls_uvtz_75iqr_primavera = []
 
-        #     # compose d_Ensemble dataset
-        #     d_Ensemble[clim_var + ' ' + forcing] = np.mean(ls_Cn2_primavera, axis=0)
+            for clim_key in d_model.keys():
+                ### new: calculate ensemble for every forcing, take time median
+                if forcing in d_model[clim_key]['folders']:
 
-        # # plotting
+                    # problem: not all models go down to 1000hP or other limits...
+                    # e.g. for Cerro Tololo, the first model stops at 700hPa
+                    # don't take the median
+                    ls_uvtz_primavera.append(d_model[clim_key]['ds_seeing'][clim_var + " " + forcing].median(dim='time')) # .rename(clim_key) .dropna(dim='level')
+
+                    ls_uvtz_25iqr_primavera.append(d_model[clim_key]['ds_seeing'][clim_var + " " + forcing].quantile(q=0.25, dim='time'))
+                    ls_uvtz_75iqr_primavera.append(d_model[clim_key]['ds_seeing'][clim_var + " " + forcing].quantile(q=0.75, dim='time'))
+
+                    # print(ls_uvtz_primavera)
+
+            # compose d_Ensemble dataset
+            # merge list to xarray!
+            # xr_uvtz_median = xr.merge(ls_uvtz_primavera)
+            # I take the mean of the medians! if Nan, exclude...
+            # for this purpose, use np.nanmean: this ignores nan values and just takes the mean over the rest!
+            d_Ensemble[clim_var + ' ' + forcing] = np.nanmean(ls_uvtz_primavera, axis=0)
+            d_Ensemble[clim_var + ' ' + forcing + ' IQR 0.25'] = np.nanmean(ls_uvtz_25iqr_primavera, axis=0)
+            d_Ensemble[clim_var + ' ' + forcing + ' IQR 0.75'] = np.nanmean(ls_uvtz_75iqr_primavera, axis=0)
+
+        # add level (just take one clim_key, the pressure levels are all the same!)
+        d_Ensemble['Plev'] = d_model[clim_key]['ds_seeing'].level
+
+        # plotting
         # pr_levels_list = [1, 5, 10, 20, 30, 50, 70, 100, 150, 200, 250, 300, 400, 500, 600, 700, 850, 925, 1000] # , 925, 1000
-        # lin_st = ['dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
-        # line_list = []
+        lin_st = ['dashed', 'dashdot', 'dotted', (0, (3, 1, 1, 1, 1, 1))]
+        line_list = []
 
-        # for forcing in d_Ensemble['folders']:
+        for forcing in d_Ensemble['folders']:
 
-        #     # choose the right linestyle
-        #     if forcing=='hist':
-        #         forced_linestyle = lin_st[0]
-        #         color = 'navy'
-        #     elif forcing=='present':
-        #         forced_linestyle = lin_st[1]
-        #         color = 'navy'
-        #     elif forcing=='future':
-        #         forced_linestyle = lin_st[2]
-        #         color = 'red'
-            
-        #     ax.plot(d_Ensemble['Cn2 ' + forcing], pr_levels_list[0:(len(d_Ensemble['Cn2 ' + forcing]))], 
-        #                     linestyle=forced_linestyle, color=color)
+            # choose the right linestyle
+            if forcing=='hist':
+                forced_linestyle = lin_st[0]
+                color = 'navy'
+            elif forcing=='present':
+                forced_linestyle = lin_st[1]
+                color = 'navy'
+            elif forcing=='future':
+                forced_linestyle = lin_st[2]
+                color = 'red'
+            # revision: I just forgot the below line!!!!
+            elif forcing=='SSTfuture':
+                forced_linestyle = lin_st[3]
+                color = 'red'
+            else:
+                raise Warning('no corresponding linestyle selected!')
 
-        #     # for legend
-        #     line_list.append(Line2D([0], [0], linestyle = forced_linestyle, color = color, label = r'PRIMAVERA $C_n^2$ ' + forcing))
+            ax[climind].plot(d_Ensemble[clim_var + ' ' + forcing], d_Ensemble['Plev'], # pr_levels_list[0:(len(d_Ensemble[clim_var + ' ' + forcing]))],
+                            linestyle=forced_linestyle, color=color)
+            # IQR fill between x-axis
+            ax[climind].fill_betweenx(d_Ensemble['Plev'], d_Ensemble[clim_var + ' ' + forcing + ' IQR 0.25'],
+                                            d_Ensemble[clim_var + ' ' + forcing + ' IQR 0.75'], facecolor= color, alpha=0.1)
+
+            # for legend
+            line_list.append(Line2D([0], [0], linestyle = forced_linestyle, color = color, label = 'PRIMAVERA ' + forcing))
 
 
         #### ERA5
         # load data
         median_path = './Astroclimate_outcome/median_nc_u_v_t/' + site_name_folder + '_median_ERA5_u_v_t_z.nc'
+        iqr_path = './Astroclimate_outcome/median_nc_u_v_t/' + site_name_folder + '_IQR_ERA5_u_v_t_z.nc'
+
+        ds_ERA5_iqr = xr.open_dataset(iqr_path).load()
         ds_ERA5_median = xr.open_dataset(median_path).load()
 
         if clim_var == 'zg':
             # divide ERA5 by 10
-            ds_ERA5_median['z'] = ds_ERA5_median['z']/10 
+            ds_ERA5_median['z'] = ds_ERA5_median['z']/10
+            ds_ERA5_iqr['z'] = ds_ERA5_iqr['z']/10
 
         # plot profile
         # note: clim_var[0] only takes the first character ('u', 'v', 't')
-        ax[climind].plot(ds_ERA5_median[clim_var[0]], ds_ERA5_median.level, linestyle = '-', color = '#009e73', label='ERA5') # goes until 50hPa (glad I included it until 50hPa!)
+        ax[climind].plot(ds_ERA5_median[clim_var[0]], ds_ERA5_median.level, linestyle = '-', color = '#009e73') # , label='ERA5' # goes until 50hPa (glad I included it until 50hPa!)
+        # plot interquartile range (fill between x-axis!)
+        ax[climind].fill_betweenx(ds_ERA5_iqr.level, ds_ERA5_iqr[clim_var[0]].sel(quantile=0.25), ds_ERA5_iqr[clim_var[0]].sel(quantile=0.75), facecolor= '#009e73', alpha=0.2) # , label='IQR'
 
         # for legend
-        # line_list.append(Line2D([0], [0], linestyle = '-', color = '#009e73', label = r'ERA5 $C_n^2$'))
-
+        # median
+        line_list.append(Line2D([0], [0], linestyle = '-', color = '#009e73', label = 'ERA5'))
+        # iqr (for all data! therefore, take black as the facecolor)
+        line_list.append(Patch(facecolor = 'k', label = 'IQR', alpha=0.1))
         # plot a red line at 70hPa
-        ax[climind].axhline(y=70, xmin=-20, xmax=300, color = 'red', label='70hPa line')
+        # ax[climind].axhline(y=70, xmin=-20, xmax=300, color = 'red', label='70hPa line')
 
         # maybe I have to cut off the integration of PRIMAVERA to get rid of the peak at 70hPa to increase correlation of osborn seeing?
 
@@ -647,10 +780,12 @@ def plot_seeing_vars_vertical_profile(idx, d_model):
         ax[climind].set_ylabel('Pressure [hPa]')
         # ax.set_title(site_noUnderline)
         ax[climind].set_xlabel(ls_labels[climind])
-        if climind == (len(lsclimvars)-1): 
-            ax[climind].legend(loc = 'upper left', bbox_to_anchor = (1.1, 1))
 
+        # revision: no legend!!
+        # if climind == (len(lsclimvars)-1):
+        #     ax[climind].legend(handles=line_list, loc = 'upper left', bbox_to_anchor = (1.1, 1))
 
+        fig.suptitle(site_noUnderline) # f'{climxa.alphabet_from_idx(idx)}) {site_noUnderline}')
 
         # if idx == 7:
         #     # plot legend into empty spot
@@ -665,8 +800,22 @@ def plot_seeing_vars_vertical_profile(idx, d_model):
 
     return fig
 
-#%% MAIN: vertical profile of  
+
+#%% MAIN: vertical profile of
 # loop through sites
+
+# I've had this idea, but it is not so good.. just plot single figs
+# # plot to individual figures for individual variables
+# fig_u = plt.figure(figsize = (14, 20))
+# fig_v = plt.figure(figsize = (14, 20))
+# fig_t = plt.figure(figsize = (14, 20))
+# fig_z = plt.figure(figsize = (14, 20))
+
+# # define gridspec
+# gs_u = fig.add_gridspec(3, 3)
+# gs_v = fig.add_gridspec(3, 3)
+# gs_t = fig.add_gridspec(3, 3)
+# gs_z = fig.add_gridspec(3, 3)
 
 for idx in range(0,8):
 
@@ -674,12 +823,19 @@ for idx in range(0,8):
 
     d_model = get_PRIMAVERA_seeing_vars(idx)
 
+    # include a step to calculate median and IQR for PRIMAVERA! just take median of 6 models? No!
+    #  take median of every model and then take mean?
+    # calc_PRIMAVERA_median
+    # pass figures back and forth!
     fig = plot_seeing_vars_vertical_profile(idx, d_model)
 
     # save fig
-    fig.savefig('./Model_evaluation/seeing_nc/vertical_profile_u_v_t/'+ site_name_folder + '_vertical_profile_u_v_t.png', bbox_inches = 'tight', pad_inches=0.0, dpi=400)
+    fig.savefig('./Model_evaluation/seeing_nc/vertical_profile_u_v_t/'+ site_name_folder + '_vertical_profile_median_IQR_u_v_t.png', bbox_inches = 'tight', pad_inches=0.0, dpi=400)
 
 # remember: ua: eastward wind (going to the east (jet stream!)), va: northward wind
+
+
+#%% END OF MAIN!
 
 #%%
 # plot Cn2 (possible?)
@@ -751,7 +907,7 @@ for mod in ['ERA5', 'PRIMAVERA']:
         P = ds_full.level.sel(level=pr_levels_list[i]) #[i]
         u_i0 = ds_full[U_clim_var].sel(level=pr_levels_list[i])
         u_i1 = ds_full[U_clim_var].sel(level=pr_levels_list[i+1])
-        v_i0 = ds_full[V_clim_var].sel(level=pr_levels_list[i]) 
+        v_i0 = ds_full[V_clim_var].sel(level=pr_levels_list[i])
         v_i1 = ds_full[V_clim_var].sel(level=pr_levels_list[i+1])
         T1 = ds_full[T_clim_var].sel(level=pr_levels_list[i+1])
         # P1 = ds_full.level[int(i+1)]  # wrong!
@@ -760,8 +916,8 @@ for mod in ['ERA5', 'PRIMAVERA']:
         if i == 0:
             df_z_m1 = 0 # not used, but needs a value
         else:
-            df_z_m1 = ds_full[Z_clim_var].sel(level=pr_levels_list[i-1])            
-            
+            df_z_m1 = ds_full[Z_clim_var].sel(level=pr_levels_list[i-1])
+
         # if i == (len(pr_levels_list) - 1):
         #     df_z_p1 = None
         # else:
@@ -777,7 +933,7 @@ for mod in ['ERA5', 'PRIMAVERA']:
         # print(ds_check['time'].size)
 
         J = J + J_add
-        
+
 
         # (for Cn2 profile, do not sum over Cn2, but store Cn2 on pressure level dimension)
         # do that!! (and only if J_add is not nan)
@@ -792,7 +948,7 @@ for mod in ['ERA5', 'PRIMAVERA']:
         # #     delta_z = abs(df_z_m1 - df_z_0)
         # else:
         #     delta_z =  abs(0.5 * (df_z_m1 - df_z_p1)) #0.5 * (df_seeing_era5_sort['z/g'][i-1] - df_seeing_era5_sort['z/g'][int(i+1)])
-        
+
         delta_z = abs(df_z_0 - df_z_p1)
         ls_dz.append(delta_z)
 
@@ -874,7 +1030,7 @@ plt.show()
 # note2: my Cn2 profile looks not quite right. We expect it to have a maximum at 200hPa, but there is a minimum
 # check whole formula! for that, create dataframe with one dataset of u,v,t,z
 # # save as csv and import to Libreoffice
-#  do integration by hand 
+#  do integration by hand
 df_sel_ERA5 = ds_sel_ERA5.to_dataframe()
 # to csv
 df_sel_ERA5.to_csv('./Model_evaluation/seeing_nc/vertical_profile_u_v_t/'+ 'SPM' + '_dataframe_testing_u_v_t_z_ERA5.csv')
@@ -918,11 +1074,11 @@ for y_var in ['u', 'v', 't', 'level']:
     y = ds_sel_ERA5[y_var]
 
     if y_var == 'level':
-        # then it is crucial to reverse the order of the Plevs, 
+        # then it is crucial to reverse the order of the Plevs,
         # otherwise we have the same problem!
         y = y.sortby('level', ascending=False)
 
-    
+
     poly, new_x, new_y = seeing_vars_polyfit(x, y, deg=5, num=100)
 
     # calculate the derivative
@@ -936,7 +1092,7 @@ for y_var in ['u', 'v', 't', 'level']:
     d_polyfits[y_var]['100vars'] = new_y
     d_polyfits[y_var]['deriv'] = der_y
 
-#%% plot some 
+#%% plot some
 
 y_var = 'u'
 
@@ -984,7 +1140,7 @@ polyderiv = np.polyder(poly2)
 der_y = polyderiv(new_x)
 
 # plt.plot( d_polyfits['t']['100z'], dTheta_wolf)
-# plt.plot(new_x, der_y) 
+# plt.plot(new_x, der_y)
 # --> calculating theta out of the 11 values and then calculate the polynomial
 # or do the derivative by hand and put in the 100vars derived from the polynomial is almost equal!
 
@@ -1003,7 +1159,7 @@ test_dTheta_dz = (th1-th0)/(z1-z0) # = 0.0046669391976090135
 # but dTheta_dz[0] = 296.3536778452241 # before I removed 'poly' before np.polyder()
 # now, dTheta_dz[0] = 0.004683882856482026
 
-# dTheta_wolf is 
+# dTheta_wolf is
 
 # append to dict
 y_var = 'Theta'
@@ -1038,7 +1194,7 @@ plt.gca().invert_yaxis()
 
 # but why minimum at 200hPa??
 # we have maximum wind speed there...
-plt.plot(E, d_polyfits['level']['100vars'] ) 
+plt.plot(E, d_polyfits['level']['100vars'] )
 # E has minimum at 200! because the derivative is exactly zero!! turning point.
 
 plt.plot(dudz, d_polyfits['level']['100vars'] )
@@ -1133,8 +1289,8 @@ plt.show()
 #     elif forcing=='future':
 #         forced_linestyle = lin_st[2]
 #         color = 'red'
-    
-#     ax.plot(d_Ensemble['hus ' + forcing], pr_levels_list[0:(len(d_Ensemble['hus ' + forcing]))], 
+
+#     ax.plot(d_Ensemble['hus ' + forcing], pr_levels_list[0:(len(d_Ensemble['hus ' + forcing]))],
 #                     linestyle=forced_linestyle, color=color)
 
 #     # for legend
@@ -1215,7 +1371,7 @@ plt.show()
 #     # plot vertical profile (median)
 #     plt.plot(d_model[clim_key]['ds_Cn2']["Cn2 " + forcing].median(dim='time'), d_model[clim_key]['ds_Cn2'].level)
 #     plt.xscale('log')
-    
+
 #     plt.gca().invert_yaxis()
 #     plt.xlabel('Cn2 [m^{1/3}]')
 #     plt.ylabel('Pressure [hPa]')

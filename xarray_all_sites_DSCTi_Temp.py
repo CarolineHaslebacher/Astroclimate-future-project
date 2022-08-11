@@ -89,9 +89,11 @@ Ensemble = True
 masterfigure = True
 save = False
 model = True
+model_color = False
 
 if masterfigure == True:
-    master_fig = plt.figure( figsize = (25, 4*(max_idx+1))) # ,constrained_layout=True) --> not needed anymore (I moved the ax4 a bit closer to the rest)
+    # master_fig = plt.figure( figsize = (25, 4*(max_idx+1))) # ,constrained_layout=True) --> not needed anymore (I moved the ax4 a bit closer to the rest)
+    master_fig = plt.figure( figsize = (22, 3.2*(max_idx+1)))
     gs = master_fig.add_gridspec(max_idx + 1, 4) # first entry: rows, second entry: columns
     # initialize pressure level list (for legend; plot only those in use)
     Plev_list = []
@@ -113,7 +115,7 @@ for idx in range(0, max_idx+1):
     file_name = '_' # at least, type '_' 
 
     if masterfigure:
-        MasterFig = (master_fig, idx, max_idx, gs, Plev_list) # or None
+        MasterFig = (master_fig, idx, max_idx, gs, Plev_list, model_color) # or None
 
     print(d_site_lonlat_data['site_name'][idx])
     # lon_obs and lat_obs are in 0-360 format!!
