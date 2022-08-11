@@ -3,7 +3,7 @@ Impact of climate change on astronomical observations, assessed with high-resolu
 
 In this repository, the code that we used for the following publication is stored (in 'master' branch):
 
-C. Haslebacher, M.-E. Demory, B.-O. Demory, M. Sarazin, and P. L. Vidale, "Impact of climate change on site characteristics of eight major astronomical observatories using high-resolution global climate projections until 2050" (in revision)
+C. Haslebacher, M.-E. Demory, B.-O. Demory, M. Sarazin, and P. L. Vidale, "Impact of climate change on site characteristics of eight major astronomical observatories using high-resolution global climate projections until 2050" (accepted by A&A, in press)
 
 
 
@@ -15,6 +15,9 @@ other files:
   - I've also used and changed code in the skill_metrics package by Peter Rocheford
   
 - workflow: 
+  - Note: in all code files, the paths must be changed.
+  - Download PRIMAVERA and ERA5 data (with files in folder 'ERA5_download_scripts' and 'tracking_ids_PRIMAVERA') <!--or use pckl files (3.2GB!!) -->
+  - In situ data is in folder 'site-specific'
   - specify things like lon/lat of your selected site and paths for in situ data in 'sites_lon_lat_dataframe.py'
   - extract regions with 'Extract_lonlat_grid.py' to extract a small region and store it as a netCDF file for faster processing
   - ready to do skill score analysis and trend analysis for temperature, relative humidity and total cloud cover
@@ -24,20 +27,25 @@ other files:
   - compute seeing datasets for both methods with 'calc_model_seeing_values.py' (ERA5) and 'xarray_prepare_seeing_data_PRIMAVERA.py' (PRIMAVERA)
   - ready to do skill score analysis and trend analysis for specific humidity, PWV and the two seeing approaches
     - import pickle files. In R, do trend analysis with adapted 'R_Bayesian_Trends.R' for PRIMAVERA and 'R_Bayesian_Trends_ERA5.R' for ERA5
+  - the files 'xarray_all_sites_[...].py can be used to generate Figs. 4-10 in Haslebacher et al. (2022).
+  - 'Pub_skill_score_and_trends.py' generates Fig. 11. in Haslebacher et al. (2022).
+  - The Bayesian analysis is plotted in detail in 
 
 
-
-
+<!-- a normal html comment 
 I still need to add the following points to the README file:
-add: explain json files
+add: explain json files ???
 add: bayesian plots
 add: csv tables
 add: seeing calibration factors k and A
+-->
 
 ### How to import a pickle file in python
 
 import pickle
+```
 with open('mypklfile.pkl', 'rb') as myfile:
     dload = pickle.load(myfile)
+```
     
 
