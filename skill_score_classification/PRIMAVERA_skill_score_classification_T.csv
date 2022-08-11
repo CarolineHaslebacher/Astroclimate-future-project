@@ -1,0 +1,9 @@
+Site,T,classification
+Mauna Kea,600hPa SST present,Mediocre (0.56)
+Paranal,700hPa SST present,Mediocre (0.61)
+La Silla,850hPa hist,Good (0.74)
+Cerro Tololo,850hPa hist,Good (0.66)
+La Palma,850hPa SST present,Good (0.89)
+Siding Spring,925hPa SST present,Excellent (0.93)
+Sutherland,850hPa hist,Excellent (0.93)
+SPM,700hPa SST present,Good (0.9)

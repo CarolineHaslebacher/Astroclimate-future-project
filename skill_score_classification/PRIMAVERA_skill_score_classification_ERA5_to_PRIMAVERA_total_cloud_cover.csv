@@ -1,0 +1,9 @@
+Site,cloud cover,classification
+Mauna Kea,SST present,Poor (0.18)
+Paranal,SST present,Poor (0.21)
+La Silla,SST present,Mediocre (0.58)
+Cerro Tololo,SST present,Good (0.69)
+La Palma,SST present,Poor (0.06)
+Siding Spring,SST present,Poor (0.16)
+Sutherland,hist,Mediocre (0.34)
+SPM,SST present,Mediocre (0.44)
