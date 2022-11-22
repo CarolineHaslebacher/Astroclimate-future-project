@@ -3,7 +3,7 @@ Impact of climate change on astronomical observations, assessed with high-resolu
 
 In this repository, the code and data that we used for the following publication is stored:
 
-C. Haslebacher, M.-E. Demory, B.-O. Demory, M. Sarazin, and P. L. Vidale, "Impact of climate change on site characteristics of eight major astronomical observatories using high-resolution global climate projections until 2050" (accepted by A&A, in press)
+C. Haslebacher, M.-E. Demory, B.-O. Demory, M. Sarazin, and P. L. Vidale, "Impact of climate change on site characteristics of eight major astronomical observatories using high-resolution global climate projections until 2050", A&A, Volume 665, 2022
 
 The 'code' branch can be cloned by using
 ```git clone -b code --single-branch https://github.com/CarolineHaslebacher/Astroclimate-future-project.git```.
