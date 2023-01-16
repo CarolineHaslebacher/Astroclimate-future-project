@@ -32,7 +32,6 @@ other files:
     - import pickle files. In R, do trend analysis with adapted 'R_Bayesian_Trends.R' for PRIMAVERA and 'R_Bayesian_Trends_ERA5.R' for ERA5
   - the files 'xarray_all_sites_[...].py can be used to generate Figs. 4-10 in Haslebacher et al. (2022).
   - 'Pub_skill_score_and_trends.py' generates Fig. 11. in Haslebacher et al. (2022).
-  - The Bayesian analysis is plotted in detail in 
 
 
 <!-- a normal html comment 
